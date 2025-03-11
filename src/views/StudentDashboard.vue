@@ -409,10 +409,10 @@
         }
       },
       logout() {
-        // Логика выхода из системы
-        console.log('Logging out...');
-        // Перенаправление на страницу входа
-        this.$router.push('/auth');
+        // Очищаем данные пользователя
+        localStorage.removeItem('user');
+        // Перенаправляем на главную страницу
+        this.$router.push('/');
       },
       getStatusClass(assignment) {
         if (assignment.status === 'completed') return 'status-completed';

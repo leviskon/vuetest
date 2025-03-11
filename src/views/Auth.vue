@@ -137,10 +137,25 @@
     },
     methods: {
       handleLogin() {
-        // Здесь будет логика аутентификации
-        console.log('Login attempt with:', this.loginForm);
-        // После успешной аутентификации можно перенаправить на главную
-        // this.$router.push('/');
+        // Простая проверка данных
+        if (!this.loginForm.email || !this.loginForm.password) {
+          alert('Пожалуйста, заполните все поля');
+          return;
+        }
+
+        // В реальном приложении здесь будет запрос к API
+        // Имитация успешной авторизации
+        const userData = {
+          email: this.loginForm.email,
+          name: 'Пользователь', // В реальном приложении это придет с сервера
+          id: Date.now() // В реальном приложении это придет с сервера
+        };
+
+        // Сохраняем данные пользователя
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        // Перенаправляем на dashboard
+        this.$router.push('/dashboard');
       },
       handleRegister() {
         // Проверка совпадения паролей
@@ -148,9 +163,25 @@
           alert('Пароли не совпадают');
           return;
         }
-        
-        // Здесь будет логика регистрации
-        console.log('Register attempt with:', this.registerForm);
+
+        if (!this.registerForm.name || !this.registerForm.email || !this.registerForm.password || !this.registerForm.terms) {
+          alert('Пожалуйста, заполните все поля и примите условия использования');
+          return;
+        }
+
+        // В реальном приложении здесь будет запрос к API
+        // Имитация успешной регистрации
+        const userData = {
+          email: this.registerForm.email,
+          name: this.registerForm.name,
+          id: Date.now() // В реальном приложении это придет с сервера
+        };
+
+        // Сохраняем данные пользователя
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        // Перенаправляем на dashboard
+        this.$router.push('/dashboard');
       },
       forgotPassword() {
         // Логика для восстановления пароля
