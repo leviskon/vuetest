@@ -15,8 +15,8 @@
           </ul>
         </nav>
         <div class="header__auth">
-          <button class="btn btn-login">Войти</button>
-          <button class="btn btn-register">Регистрация</button>
+          <button class="btn btn-login" @click="$router.push('/auth')">Войти</button>
+          <button class="btn btn-register" @click="$router.push('/auth?tab=register')">Регистрация</button>
         </div>
       </div>
     </header>
