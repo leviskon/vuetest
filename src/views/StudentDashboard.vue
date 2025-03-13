@@ -169,21 +169,24 @@
                     <div v-if="day.events.length > 0" class="event-dot"></div>
                   </div>
                 </div>
-                <div v-if="selectedDay && selectedDayEvents.length > 0" class="day-events">
-                  <h4>События на {{ formatDate(selectedDay) }}</h4>
-                  <div v-for="event in selectedDayEvents" :key="event.id" class="event-item">
-                    <div class="event-time">{{ formatTime(event.time) }}</div>
-                    <div class="event-info">
-                      <div class="event-title">{{ event.title }}</div>
-                      <div class="event-description">{{ event.description }}</div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </section>
           </div>
         </div>
       </main>
+  
+      <!-- Перемещаем блок с событиями за пределы календаря -->
+      <div v-if="selectedDay && selectedDayEvents.length > 0" class="day-events" :class="{ 'fade-out': isClosing }">
+        <h4>События на {{ formatDate(selectedDay) }}</h4>
+        <div v-for="event in selectedDayEvents" :key="event.id" class="event-item">
+          <div class="event-time">{{ formatTime(event.time) }}</div>
+          <div class="event-info">
+            <div class="event-title">{{ event.title }}</div>
+            <div class="event-description">{{ event.description }}</div>
+          </div>
+        </div>
+        <div class="timer-bar"></div>
+      </div>
   
       <footer class="footer">
         <div class="container">
@@ -218,7 +221,7 @@
         user: {
           id: 1,
           name: 'Иван Петров',
-          avatar: '/images/user-avatar.jpg',
+          avatar: '/images/student_icon.png',
           email: 'ivan@example.com'
         },
         notifications: [
@@ -318,7 +321,9 @@
             title: 'Консультация с преподавателем',
             description: 'Обсуждение прогресса по курсу UX/UI Дизайн'
           }
-        ]
+        ],
+        isClosing: false,
+        closeTimer: null,
       }
     },
     computed: {
@@ -456,7 +461,22 @@
         this.selectedDay = null;
       },
       selectDay(day) {
+        // Сбрасываем предыдущий таймер
+        if (this.closeTimer) {
+          clearTimeout(this.closeTimer);
+        }
+        
         this.selectedDay = day.date;
+        this.isClosing = false;
+        
+        // Устанавливаем новый таймер
+        this.closeTimer = setTimeout(() => {
+          this.isClosing = true;
+          // Удаляем сообщение сразу после начала анимации исчезновения
+          setTimeout(() => {
+            this.selectedDay = null;
+          }, 300); // Длительность анимации fadeOutRight
+        }, 5000); // 5 секунд до закрытия
       },
       getEventsForDay(date) {
         if (!date) return [];
@@ -990,9 +1010,8 @@
   
   .day-events {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 80px;
+    right: 20px;
     background: white;
     border-radius: var(--border-radius);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -1000,14 +1019,53 @@
     z-index: 1000;
     min-width: 300px;
     max-width: 400px;
-    animation: slideIn 0.3s ease;
+    animation: slideInRight 0.3s ease;
   }
   
-  .day-events h4 {
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #f1f1f1;
-    font-size: 1.1rem;
+  .day-events.fade-out {
+    animation: fadeOutRight 0.3s ease forwards;
+  }
+  
+  .timer-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    animation: timer 5s linear forwards;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+  }
+  
+  @keyframes timer {
+    from {
+      width: 100%;
+    }
+    to {
+      width: 0%;
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes fadeOutRight {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(20px);
+    }
   }
   
   .event-item {
@@ -1044,28 +1102,6 @@
   .event-description {
     font-size: 0.9rem;
     color: #6c757d;
-  }
-  
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -40%);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, -50%);
-    }
-  }
-  
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
   
   /* Стили для карточек курсов */
@@ -1223,11 +1259,29 @@
   .btn-primary {
     background-color: var(--primary-color);
     color: white;
+    border: 2px solid var(--primary-color);
   }
   
   .btn-primary:hover {
-    background-color: var(--primary-color-dark);
+    background-color: transparent;
+    color: var(--primary-color);
     transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(67, 97, 238, 0.2);
+  }
+  
+  .btn-register {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: 2px solid transparent;
+    box-shadow: 0 4px 15px rgba(67, 97, 238, 0.4);
+  }
+  
+  .btn-register:hover {
+    background: transparent;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-3px);
+    box-shadow: 0 7px 20px rgba(67, 97, 238, 0.2);
   }
   
   /* Анимации */
