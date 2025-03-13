@@ -76,9 +76,16 @@
               
               <div class="lesson-player">
                 <div v-if="currentLesson.type === 'video'" class="video-player">
-                  <!-- Здесь будет видео-плеер -->
-                  <div class="video-placeholder">
-                    <span>🎥 Видеоурок</span>
+                  <div class="video-container">
+                    <video 
+                      ref="videoPlayer"
+                      class="video-player"
+                      controls
+                      preload="metadata"
+                    >
+                      <source src="/videos/lesson_1.mp4" type="video/mp4">
+                      Ваш браузер не поддерживает видео тег.
+                    </video>
                   </div>
                 </div>
                 <div v-else class="lecture-content">
@@ -142,7 +149,13 @@ export default {
     return {
       course: null,
       currentLesson: null,
-      isLoading: true
+      isLoading: true,
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      progress: 0,
+      volume: 1,
+      isFullscreen: false
     }
   },
   computed: {
@@ -231,10 +244,57 @@ export default {
       } finally {
         this.isLoading = false
       }
+    },
+    togglePlay() {
+      const video = this.$refs.videoPlayer
+      if (video.paused) {
+        video.play()
+      } else {
+        video.pause()
+      }
+    },
+    handleTimeUpdate() {
+      const video = this.$refs.videoPlayer
+      this.currentTime = video.currentTime
+      this.progress = (video.currentTime / video.duration) * 100
+    },
+    handleVideoEnd() {
+      this.isPlaying = false
+      this.currentTime = 0
+      this.progress = 0
+    },
+    handlePlay() {
+      this.isPlaying = true
+    },
+    handlePause() {
+      this.isPlaying = false
+    },
+    handleVolumeChange() {
+      const video = this.$refs.videoPlayer
+      video.volume = this.volume
+    },
+    toggleFullscreen() {
+      const video = this.$refs.videoPlayer
+      if (!document.fullscreenElement) {
+        video.requestFullscreen()
+        this.isFullscreen = true
+      } else {
+        document.exitFullscreen()
+        this.isFullscreen = false
+      }
+    },
+    formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = Math.floor(seconds % 60)
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
     }
   },
   async mounted() {
     await this.loadCourseData()
+    const video = this.$refs.videoPlayer
+    video.addEventListener('loadedmetadata', () => {
+      this.duration = video.duration
+    })
   }
 }
 </script>
@@ -448,9 +508,82 @@ export default {
   justify-content: center;
 }
 
-.video-placeholder {
+.video-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+  aspect-ratio: 16/9;
+}
+
+.video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 0.1s linear;
+}
+
+.video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.video-container:hover .video-controls {
+  opacity: 1;
+}
+
+.control-btn {
+  background: none;
+  border: none;
   color: white;
-  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  font-size: 1.2rem;
+  transition: transform 0.2s ease;
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+}
+
+.time-display {
+  color: white;
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+}
+
+.volume-control input[type="range"] {
+  width: 100px;
 }
 
 .lecture-content {
