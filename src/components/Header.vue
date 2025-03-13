@@ -9,6 +9,7 @@
       <nav class="header__nav" :class="{ active: isMenuOpen }">
         <ul>
           <li><a href="#courses">Мои курсы</a></li>
+          <li><a href="#all-courses">Все курсы</a></li>
           <li><a href="#assignments">Задания</a></li>
           <li><a href="#calendar">Календарь</a></li>
         </ul>
@@ -339,6 +340,12 @@ export default {
   
   .header__nav a:hover {
     background-color: #f5f5f5;
+  }
+  
+  .header__nav a.btn {
+    display: block;
+    text-align: center;
+    margin: 0.5rem 2rem;
   }
 }
 
