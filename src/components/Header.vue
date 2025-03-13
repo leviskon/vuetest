@@ -9,7 +9,7 @@
       <nav class="header__nav" :class="{ active: isMenuOpen }">
         <ul>
           <li><a href="#courses">Мои курсы</a></li>
-          <li><a href="#all-courses">Все курсы</a></li>
+          <li><a @click="goToAllCourses" class="cursor-pointer">Все курсы</a></li>
           <li><a href="#assignments">Задания</a></li>
           <li><a href="#calendar">Календарь</a></li>
         </ul>
@@ -109,6 +109,10 @@ export default {
     logout() {
       localStorage.removeItem('user');
       this.$router.push('/');
+    },
+    goToAllCourses() {
+      this.$router.push('/all-courses');
+      this.isMenuOpen = false; // Закрываем мобильное меню после перехода
     }
   }
 }
@@ -358,5 +362,9 @@ export default {
     width: 300px;
     right: -140px;
   }
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style> 

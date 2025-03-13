@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Auth from '../views/Auth.vue'
 import StudentDashboard from '../views/StudentDashboard.vue'
+import AllCourses from '@/views/AllCourses.vue'
 
 const routes = [
   {
@@ -19,6 +20,11 @@ const routes = [
     name: 'StudentDashboard',
     component: StudentDashboard,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/all-courses',
+    name: 'AllCourses',
+    component: AllCourses
   }
 ]
 
