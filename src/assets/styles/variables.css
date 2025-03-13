@@ -1,0 +1,24 @@
+:root {
+  /* Цветовая схема */
+  --primary-color: #4CAF50;
+  --secondary-color: #2196F3;
+  --text-color: #333333;
+  --background-color: #ffffff;
+  
+  /* Размеры */
+  --container-width: 1200px;
+  --header-height: 60px;
+  
+  /* Отступы */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Шрифты */
+  --font-family: 'Arial', sans-serif;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-sm: 14px;
+} 
