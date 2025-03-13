@@ -14,7 +14,12 @@
             <div class="progress-text">{{ course.progress }}% завершено</div>
           </div>
           <div class="course-card__footer">
-            <button class="btn btn-primary" @click="$router.push(`/course/${course.id}/content`)">Продолжить</button>
+            <button 
+              class="btn btn-primary" 
+              @click="$router.push(`/assignment/${course.id}`)"
+            >
+              Перейти к заданию
+            </button>
           </div>
         </div>
       </div>

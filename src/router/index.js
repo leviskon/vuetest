@@ -4,6 +4,7 @@ import Auth from '../views/Auth.vue'
 import StudentDashboard from '../views/StudentDashboard.vue'
 import AllCourses from '@/views/AllCourses.vue'
 import CourseContent from '@/views/CourseContent.vue'
+import AssignmentPage from '@/views/AssignmentPage.vue'
 
 const routes = [
   {
@@ -25,12 +26,19 @@ const routes = [
   {
     path: '/all-courses',
     name: 'AllCourses',
-    component: AllCourses
+    component: AllCourses,
+    meta: { requiresAuth: true }
   },
   {
-    path: '/course/:id/content',
+    path: '/course/:id',
     name: 'CourseContent',
     component: CourseContent,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/assignment/:id',
+    name: 'AssignmentPage',
+    component: AssignmentPage,
     meta: { requiresAuth: true }
   }
 ]
