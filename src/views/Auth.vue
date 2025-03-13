@@ -94,14 +94,16 @@
           </div>
           
           <div class="form-group">
-            <label for="register-password-confirm">Подтверждение пароля</label>
-            <input 
-              id="register-password-confirm" 
-              type="password" 
-              v-model="registerForm.passwordConfirm" 
-              placeholder="Подтвердите пароль" 
+            <label for="register-role">Роль</label>
+            <select 
+              id="register-role" 
+              v-model="registerForm.role" 
               required
             >
+              <option value="">Выберите роль</option>
+              <option value="student">Студент</option>
+              <option value="teacher">Преподаватель</option>
+            </select>
           </div>
           
           <div class="form-checkbox">
@@ -130,7 +132,7 @@
           name: '',
           email: '',
           password: '',
-          passwordConfirm: '',
+          role: '',
           terms: false
         }
       }
@@ -158,13 +160,7 @@
         this.$router.push('/dashboard');
       },
       handleRegister() {
-        // Проверка совпадения паролей
-        if (this.registerForm.password !== this.registerForm.passwordConfirm) {
-          alert('Пароли не совпадают');
-          return;
-        }
-
-        if (!this.registerForm.name || !this.registerForm.email || !this.registerForm.password || !this.registerForm.terms) {
+        if (!this.registerForm.name || !this.registerForm.email || !this.registerForm.password || !this.registerForm.role || !this.registerForm.terms) {
           alert('Пожалуйста, заполните все поля и примите условия использования');
           return;
         }
@@ -174,6 +170,7 @@
         const userData = {
           email: this.registerForm.email,
           name: this.registerForm.name,
+          role: this.registerForm.role,
           id: Date.now() // В реальном приложении это придет с сервера
         };
 
@@ -396,6 +393,22 @@
   .auth-links a:hover {
     text-decoration: underline;
     color: var(--secondary-color);
+  }
+  
+  .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    font-size: 1rem;
+    background-color: white;
+  }
+  
+  .form-group select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+    outline: none;
   }
   
   @media (max-width: 480px) {
