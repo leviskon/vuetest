@@ -38,15 +38,19 @@
           <img :src="user.avatar" :alt="user.name" class="user-avatar">
           <span class="user-name">{{ user.name }}</span>
           <div class="user-menu" v-if="showUserMenu">
-            <div class="user-menu-item" @click="$router.push('/profile')">
-              <span>Мой профиль</span>
-            </div>
-            <div class="user-menu-item" @click="$router.push('/settings')">
-              <span>Настройки</span>
-            </div>
-            <div class="user-menu-item logout" @click="logout">
-              <span>Выйти</span>
-            </div>
+            <router-link to="/profile" class="menu-item">
+              <i class="fas fa-user"></i>
+              Мой профиль
+            </router-link>
+            <router-link to="/settings" class="menu-item">
+              <i class="fas fa-cog"></i>
+              Настройки
+            </router-link>
+            <div class="menu-divider"></div>
+            <a href="#" class="menu-item" @click.prevent="logout">
+              <i class="fas fa-sign-out-alt"></i>
+              Выйти
+            </a>
           </div>
         </div>
       </div>
@@ -312,29 +316,50 @@ export default {
 
 .user-menu {
   position: absolute;
-  top: 120%;
+  top: 100%;
   right: 0;
-  width: 200px;
   background: white;
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
-  z-index: 100;
-  overflow: hidden;
-  animation: fadeIn 0.3s;
+  padding: 0.5rem;
+  min-width: 200px;
+  z-index: 1000;
 }
 
-.user-menu-item {
-  padding: 0.75rem 1.25rem;
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-color);
+  text-decoration: none;
+  border-radius: var(--border-radius);
   transition: var(--transition);
-  cursor: pointer;
 }
 
-.user-menu-item:hover {
-  background-color: #f5f5f5;
+.menu-item:hover {
+  background-color: #f8f9fa;
+  color: var(--primary-color);
 }
 
-.user-menu-item.logout {
-  border-top: 1px solid #f1f1f1;
+.menu-item i {
+  width: 20px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #dee2e6;
+  margin: 0.5rem 0;
+}
+
+.menu-item.logout {
+  color: #dc3545;
+}
+
+.menu-item.logout:hover {
+  background-color: #fff5f5;
   color: #dc3545;
 }
 

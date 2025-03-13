@@ -1,10 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
+import Home from '@/views/Home.vue'
 import Auth from '../views/Auth.vue'
 import StudentDashboard from '../views/StudentDashboard.vue'
 import AllCourses from '@/views/AllCourses.vue'
 import CourseContent from '@/views/CourseContent.vue'
 import AssignmentPage from '@/views/AssignmentPage.vue'
+import ProfilePage from '@/views/ProfilePage.vue'
+import SettingsPage from '@/views/SettingsPage.vue'
 
 const routes = [
   {
@@ -39,6 +41,18 @@ const routes = [
     path: '/assignment/:id',
     name: 'AssignmentPage',
     component: AssignmentPage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'ProfilePage',
+    component: ProfilePage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/settings',
+    name: 'SettingsPage',
+    component: SettingsPage,
     meta: { requiresAuth: true }
   }
 ]

@@ -16,9 +16,9 @@
           <div class="course-card__footer">
             <button 
               class="btn btn-primary" 
-              @click="$router.push(`/assignment/${course.id}`)"
+              @click="$router.push(`/course/${course.id}`)"
             >
-              Перейти к заданию
+              Продолжить
             </button>
           </div>
         </div>
