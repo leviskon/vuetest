@@ -182,6 +182,20 @@ export default {
 .notification-icon {
   font-size: 1.4rem;
   transition: var(--transition);
+  display: inline-block;
+}
+
+.notifications:hover .notification-icon {
+  animation: bellShake 0.5s ease-in-out;
+}
+
+@keyframes bellShake {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(15deg); }
+  40% { transform: rotate(-15deg); }
+  60% { transform: rotate(7deg); }
+  80% { transform: rotate(-7deg); }
+  100% { transform: rotate(0); }
 }
 
 .notification-badge {
@@ -263,6 +277,22 @@ export default {
   gap: 0.75rem;
   cursor: pointer;
   position: relative;
+  padding: 0.5rem;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+}
+
+.user-profile:hover {
+  background-color: #f5f5f5;
+}
+
+.user-profile:hover .user-avatar {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.user-profile:hover .user-name {
+  color: var(--primary-color);
 }
 
 .user-avatar {
@@ -272,10 +302,12 @@ export default {
   object-fit: cover;
   border: 2px solid white;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .user-name {
   font-weight: 600;
+  transition: color 0.3s ease;
 }
 
 .user-menu {

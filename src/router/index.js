@@ -3,6 +3,7 @@ import Home from '../views/Home.vue'
 import Auth from '../views/Auth.vue'
 import StudentDashboard from '../views/StudentDashboard.vue'
 import AllCourses from '@/views/AllCourses.vue'
+import CourseContent from '@/views/CourseContent.vue'
 
 const routes = [
   {
@@ -25,6 +26,12 @@ const routes = [
     path: '/all-courses',
     name: 'AllCourses',
     component: AllCourses
+  },
+  {
+    path: '/course/:id/content',
+    name: 'CourseContent',
+    component: CourseContent,
+    meta: { requiresAuth: true }
   }
 ]
 

@@ -14,7 +14,7 @@
             <div class="progress-text">{{ course.progress }}% завершено</div>
           </div>
           <div class="course-card__footer">
-            <button class="btn btn-primary" @click="$router.push(`/course/${course.id}`)">Продолжить</button>
+            <button class="btn btn-primary" @click="$router.push(`/course/${course.id}/content`)">Продолжить</button>
           </div>
         </div>
       </div>
@@ -113,7 +113,23 @@ export default {
 .course-card__footer {
   margin-top: 1rem;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  width: 100%;
+}
+
+.course-card__footer .btn {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.course-card__footer .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 @media (max-width: 1024px) {
