@@ -87,15 +87,20 @@ const router = createRouter({
 
 // Защита маршрутов
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('user') // Проверяем наличие пользователя в localStorage
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const isAuthenticated = !!user;
   
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/auth') // Перенаправляем на страницу авторизации
+    next('/auth');
   } else if (to.path === '/auth' && isAuthenticated) {
-    next('/dashboard') // Если пользователь авторизован и пытается зайти на страницу auth, перенаправляем в dashboard
+    // Перенаправляем на соответствующий dashboard в зависимости от роли
+    next(user.role === 'TEACHER' ? '/teacher/dashboard' : '/dashboard');
+  } else if (to.meta.requiresTeacher && user?.role !== 'TEACHER') {
+    // Если маршрут требует роль преподавателя, но пользователь не преподаватель
+    next('/dashboard');
   } else {
-    next()
+    next();
   }
-})
+});
 
 export default router

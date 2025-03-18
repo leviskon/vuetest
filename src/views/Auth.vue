@@ -22,9 +22,19 @@
           </button>
         </div>
         
+        <!-- Добавляем отображение ошибок -->
+        <div v-if="error" class="error-message">
+          {{ error }}
+        </div>
+        
+        <!-- Добавляем индикатор загрузки -->
+        <div v-if="loading" class="loading-overlay">
+          <div class="spinner"></div>
+        </div>
+        
         <!-- Форма входа -->
         <form v-if="activeTab === 'login'" class="auth-form" @submit.prevent="handleLogin">
-          <div class="form-group">
+          <div class="form-group" :class="{ 'error': formErrors.login.email }">
             <label for="login-email">Email</label>
             <input 
               id="login-email" 
@@ -33,17 +43,27 @@
               placeholder="Введите email" 
               required
             >
+            <div v-if="formErrors.login.email" class="field-error">{{ formErrors.login.email }}</div>
           </div>
           
           <div class="form-group">
             <label for="login-password">Пароль</label>
-            <input 
-              id="login-password" 
-              type="password" 
-              v-model="loginForm.password" 
-              placeholder="Введите пароль" 
-              required
-            >
+            <div class="password-input-container">
+              <input 
+                id="login-password" 
+                :type="showPassword ? 'text' : 'password'" 
+                v-model="loginForm.password" 
+                placeholder="Введите пароль" 
+                required
+              >
+              <button 
+                type="button" 
+                class="password-toggle" 
+                @click="showPassword = !showPassword"
+              >
+                <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              </button>
+            </div>
           </div>
           
           <div class="form-checkbox">
@@ -118,11 +138,14 @@
   </template>
   
   <script>
+  import { authService } from '@/services/authService';
+
   export default {
     name: 'Auth',
     data() {
       return {
         activeTab: 'login',
+        showPassword: false,
         loginForm: {
           email: '',
           password: '',
@@ -134,51 +157,64 @@
           password: '',
           role: '',
           terms: false
+        },
+        error: null,
+        loading: false,
+        formErrors: {
+          login: {},
+          register: {}
         }
       }
     },
     methods: {
-      handleLogin() {
-        // Простая проверка данных
+      async handleLogin() {
         if (!this.loginForm.email || !this.loginForm.password) {
-          alert('Пожалуйста, заполните все поля');
+          this.error = 'Пожалуйста, заполните все поля';
           return;
         }
 
-        // В реальном приложении здесь будет запрос к API
-        // Имитация успешной авторизации
-        const userData = {
-          email: this.loginForm.email,
-          name: 'Пользователь', // В реальном приложении это придет с сервера
-          id: Date.now() // В реальном приложении это придет с сервера
-        };
-
-        // Сохраняем данные пользователя
-        localStorage.setItem('user', JSON.stringify(userData));
-
-        // Перенаправляем на dashboard
-        this.$router.push('/dashboard');
+        try {
+          this.loading = true;
+          this.error = null;
+          await authService.login(this.loginForm.email, this.loginForm.password);
+          
+          // Перенаправляем на dashboard в зависимости от роли
+          const user = authService.getCurrentUser();
+          if (user.role === 'TEACHER') {
+            this.$router.push('/teacher/dashboard');
+          } else {
+            this.$router.push('/dashboard');
+          }
+        } catch (error) {
+          this.error = error.message || 'Ошибка при входе в систему';
+        } finally {
+          this.loading = false;
+        }
       },
-      handleRegister() {
+
+      async handleRegister() {
         if (!this.registerForm.name || !this.registerForm.email || !this.registerForm.password || !this.registerForm.role || !this.registerForm.terms) {
-          alert('Пожалуйста, заполните все поля и примите условия использования');
+          this.error = 'Пожалуйста, заполните все поля и примите условия использования';
           return;
         }
 
-        // В реальном приложении здесь будет запрос к API
-        // Имитация успешной регистрации
-        const userData = {
-          email: this.registerForm.email,
-          name: this.registerForm.name,
-          role: this.registerForm.role,
-          id: Date.now() // В реальном приложении это придет с сервера
-        };
-
-        // Сохраняем данные пользователя
-        localStorage.setItem('user', JSON.stringify(userData));
-
-        // Перенаправляем на dashboard
-        this.$router.push('/dashboard');
+        try {
+          this.loading = true;
+          this.error = null;
+          await authService.register(this.registerForm);
+          
+          // Перенаправляем на dashboard в зависимости от роли
+          const user = authService.getCurrentUser();
+          if (user.role === 'TEACHER') {
+            this.$router.push('/teacher/dashboard');
+          } else {
+            this.$router.push('/dashboard');
+          }
+        } catch (error) {
+          this.error = error.message || 'Ошибка при регистрации';
+        } finally {
+          this.loading = false;
+        }
       },
       forgotPassword() {
         // Логика для восстановления пароля
@@ -194,6 +230,38 @@
         
         // Возвращаемся на предыдущую страницу
         this.$router.go(-1);
+      },
+      clearErrors() {
+        this.error = null;
+        this.formErrors = {
+          login: {},
+          register: {}
+        };
+      },
+
+      validateLoginForm() {
+        this.formErrors.login = {};
+        let isValid = true;
+
+        if (!this.loginForm.email) {
+          this.formErrors.login.email = 'Email обязателен';
+          isValid = false;
+        } else if (!this.isValidEmail(this.loginForm.email)) {
+          this.formErrors.login.email = 'Введите корректный email';
+          isValid = false;
+        }
+
+        if (!this.loginForm.password) {
+          this.formErrors.login.password = 'Пароль обязателен';
+          isValid = false;
+        }
+
+        return isValid;
+      },
+
+      isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
       }
     },
     mounted() {
@@ -419,5 +487,106 @@
     .auth-form {
       padding: 1.5rem;
     }
+  }
+  
+  .form-group.error input,
+  .form-group.error select {
+    border-color: #dc3545;
+  }
+  
+  .form-group.error .field-error {
+    color: #dc3545;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  
+  .error-message {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 10px 20px;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    animation: slideDown 0.3s ease-out;
+  }
+  
+  .error-message i {
+    font-size: 1.1rem;
+  }
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .password-input-container input {
+    width: 100%;
+    padding-right: 40px;
+  }
+  
+  .password-toggle {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease;
+  }
+  
+  .password-toggle:hover {
+    color: #333;
+  }
+  
+  .password-toggle i {
+    font-size: 16px;
   }
   </style>
