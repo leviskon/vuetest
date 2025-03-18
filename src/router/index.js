@@ -7,6 +7,8 @@ import CourseContent from '@/views/CourseContent.vue'
 import AssignmentPage from '@/views/AssignmentPage.vue'
 import ProfilePage from '@/views/ProfilePage.vue'
 import SettingsPage from '@/views/SettingsPage.vue'
+import TeacherDashboard from '@/views/TeacherDashboard.vue'
+import EditCourse from '@/views/EditCourse.vue'
 
 const routes = [
   {
@@ -54,6 +56,27 @@ const routes = [
     name: 'SettingsPage',
     component: SettingsPage,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/teacher/dashboard',
+    name: 'TeacherDashboard',
+    component: TeacherDashboard,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/teacher/courses/:id/edit',
+    name: 'EditCourse',
+    component: EditCourse,
+    meta: { requiresAuth: true, requiresTeacher: true }
+  },
+  {
+    path: '/teacher/assignments/:id/check',
+    name: 'CheckAssignment',
+    component: () => import('../views/CheckAssignment.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresTeacher: true
+    }
   }
 ]
 

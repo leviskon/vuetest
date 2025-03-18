@@ -42,6 +42,10 @@
               <i class="fas fa-user"></i>
               Мой профиль
             </router-link>
+            <router-link to="/teacher/dashboard" class="menu-item">
+              <i class="fas fa-chalkboard-teacher"></i>
+              Панель преподавателя
+            </router-link>
             <router-link to="/settings" class="menu-item">
               <i class="fas fa-cog"></i>
               Настройки
