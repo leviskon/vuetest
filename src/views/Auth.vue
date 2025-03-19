@@ -102,15 +102,25 @@
             >
           </div>
           
-          <div class="form-group">
+          <div class="form-group" :class="{ 'error': formErrors.register.password }">
             <label for="register-password">Пароль</label>
-            <input 
-              id="register-password" 
-              type="password" 
-              v-model="registerForm.password" 
-              placeholder="Введите пароль" 
-              required
-            >
+            <div class="password-input-container">
+              <input 
+                id="register-password" 
+                :type="showRegisterPassword ? 'text' : 'password'" 
+                v-model="registerForm.password" 
+                placeholder="Введите пароль" 
+                required
+              >
+              <button 
+                type="button" 
+                class="password-toggle" 
+                @click="showRegisterPassword = !showRegisterPassword"
+              >
+                <i :class="showRegisterPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              </button>
+            </div>
+            <div v-if="formErrors.register.password" class="field-error">{{ formErrors.register.password }}</div>
           </div>
           
           <div class="form-group">
@@ -146,6 +156,7 @@
       return {
         activeTab: 'login',
         showPassword: false,
+        showRegisterPassword: false,
         loginForm: {
           email: '',
           password: '',
@@ -180,6 +191,7 @@
           
           // Перенаправляем на dashboard в зависимости от роли
           const user = authService.getCurrentUser();
+          console.log('User role after login:', user.role);
           if (user.role === 'TEACHER') {
             this.$router.push('/teacher/dashboard');
           } else {
@@ -205,6 +217,7 @@
           
           // Перенаправляем на dashboard в зависимости от роли
           const user = authService.getCurrentUser();
+          console.log('User role after register:', user.role);
           if (user.role === 'TEACHER') {
             this.$router.push('/teacher/dashboard');
           } else {

@@ -1,152 +1,94 @@
 <template>
-  <div class="dashboard">
+  <div class="profile-page">
     <Header />
-    
-    <main class="main">
-      <div class="dashboard-container">
-        <div class="back-button-container">
-          <button class="back-button" @click="$router.push('/dashboard')">
-            <span class="back-arrow">←</span>
-            Вернуться в панель студента
+    <main class="main-content">
+      <div class="container">
+        <div class="back-button">
+          <button @click="$router.back()" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад
           </button>
         </div>
 
-        <div class="profile-page">
+        <div class="profile-card">
           <div class="profile-header">
-            <h1>Мой профиль</h1>
-            <button 
-              class="btn btn-primary" 
-              @click="toggleEditMode"
-              v-if="!isEditMode"
-            >
-              Редактировать профиль
-            </button>
+            <h1>{{ isEditing ? 'Редактировать профиль' : 'Мой профиль' }}</h1>
+            <p class="text-muted">Управление личными данными</p>
           </div>
 
-          <div class="profile-content">
-            <div class="profile-avatar">
-              <div class="avatar-container">
-                <img :src="user.avatar" :alt="user.name" class="avatar-image">
-                <div v-if="isEditMode" class="avatar-upload">
-                  <input 
-                    type="file" 
-                    ref="avatarInput" 
-                    @change="handleAvatarChange" 
-                    accept="image/*"
-                    class="avatar-input"
-                  >
-                  <button class="btn btn-secondary" @click="triggerAvatarInput">
-                    Изменить фото
-                  </button>
-                </div>
+          <div class="profile-body">
+            <div class="avatar-section">
+              <img :src="user.avatar || '/default-avatar.png'" alt="Аватар" class="avatar" />
+              <div class="avatar-actions">
+                <label class="btn btn-primary">
+                  <i class="fas fa-camera"></i> Изменить фото
+                  <input type="file" @change="handleAvatarUpload" accept="image/*" style="display: none" />
+                </label>
               </div>
             </div>
 
-            <div class="profile-info">
-              <div class="info-section">
-                <h2>Основная информация</h2>
-                <div class="info-grid">
-                  <div class="info-item">
-                    <label>Имя</label>
-                    <input 
-                      v-if="isEditMode" 
-                      v-model="editedUser.name" 
-                      type="text"
-                      class="form-input"
-                    >
-                    <span v-else>{{ user.name }}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>Email</label>
-                    <input 
-                      v-if="isEditMode" 
-                      v-model="editedUser.email" 
-                      type="email"
-                      class="form-input"
-                    >
-                    <span v-else>{{ user.email }}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>Телефон</label>
-                    <input 
-                      v-if="isEditMode" 
-                      v-model="editedUser.phone" 
-                      type="tel"
-                      class="form-input"
-                    >
-                    <span v-else>{{ user.phone || 'Не указан' }}</span>
+            <div class="info-section">
+              <form @submit.prevent="handleSubmit">
+                <div class="info-group">
+                  <label>Имя</label>
+                  <div class="info-value">
+                    <template v-if="isEditing">
+                      <input 
+                        type="text" 
+                        v-model="user.name" 
+                        class="form-input"
+                      />
+                    </template>
+                    <template v-else>
+                      <p>{{ user.name }}</p>
+                    </template>
                   </div>
                 </div>
-              </div>
 
-              <div class="info-section">
-                <h2>Дополнительная информация</h2>
-                <div class="info-grid">
-                  <div class="info-item">
-                    <label>Дата рождения</label>
-                    <input 
-                      v-if="isEditMode" 
-                      v-model="editedUser.birthDate" 
-                      type="date"
-                      class="form-input"
-                    >
-                    <span v-else>{{ formatDate(user.birthDate) || 'Не указана' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>Город</label>
-                    <input 
-                      v-if="isEditMode" 
-                      v-model="editedUser.city" 
-                      type="text"
-                      class="form-input"
-                    >
-                    <span v-else>{{ user.city || 'Не указан' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>О себе</label>
-                    <textarea 
-                      v-if="isEditMode" 
-                      v-model="editedUser.bio" 
-                      class="form-textarea"
-                      rows="4"
-                    ></textarea>
-                    <span v-else>{{ user.bio || 'Не указано' }}</span>
+                <div class="info-group">
+                  <label>Email</label>
+                  <div class="info-value">
+                    <template v-if="isEditing">
+                      <input 
+                        type="email" 
+                        v-model="user.email" 
+                        class="form-input"
+                      />
+                    </template>
+                    <template v-else>
+                      <p>{{ user.email }}</p>
+                    </template>
                   </div>
                 </div>
-              </div>
 
-              <div class="info-section">
-                <h2>Статистика обучения</h2>
-                <div class="stats-grid">
-                  <div class="stat-item">
-                    <span class="stat-value">{{ user.stats.coursesCompleted }}</span>
-                    <span class="stat-label">Завершено курсов</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-value">{{ user.stats.assignmentsCompleted }}</span>
-                    <span class="stat-label">Выполнено заданий</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-value">{{ user.stats.averageGrade }}%</span>
-                    <span class="stat-label">Средняя оценка</span>
+                <div class="info-group">
+                  <label>Дата регистрации</label>
+                  <div class="info-value">
+                    <p>{{ formatDate(user.registrationDate) }}</p>
                   </div>
                 </div>
-              </div>
 
-              <div v-if="isEditMode" class="profile-actions">
-                <button class="btn btn-primary" @click="saveProfile">
-                  Сохранить изменения
-                </button>
-                <button class="btn btn-secondary" @click="cancelEdit">
-                  Отмена
-                </button>
-              </div>
+                <div class="form-actions">
+                  <button 
+                    type="button" 
+                    @click="toggleEdit" 
+                    class="btn btn-secondary"
+                  >
+                    {{ isEditing ? 'Отмена' : 'Редактировать' }}
+                  </button>
+                  <button 
+                    v-if="isEditing" 
+                    type="submit" 
+                    class="btn btn-primary"
+                  >
+                    Сохранить изменения
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
       </div>
     </main>
-    
     <Footer />
   </div>
 </template>
@@ -154,6 +96,7 @@
 <script>
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { authService } from '@/services/authService'
 
 export default {
   name: 'ProfilePage',
@@ -163,264 +106,255 @@ export default {
   },
   data() {
     return {
-      isEditMode: false,
       user: {
-        id: 1,
-        name: 'Иван Петров',
-        email: 'ivan@example.com',
-        phone: '+7 (999) 123-45-67',
-        avatar: '/images/student_icon.png',
-        birthDate: '2000-01-01',
-        city: 'Москва',
-        bio: 'Студент 3 курса, увлекаюсь веб-разработкой',
-        stats: {
-          coursesCompleted: 5,
-          assignmentsCompleted: 12,
-          averageGrade: 92
-        }
+        name: '',
+        email: '',
+        avatar: '',
+        registrationDate: null
       },
-      editedUser: {}
+      isEditing: false
     }
   },
   methods: {
-    toggleEditMode() {
-      this.isEditMode = !this.isEditMode
-      if (this.isEditMode) {
-        this.editedUser = { ...this.user }
+    async loadUserData() {
+      try {
+        const userData = await authService.getCurrentUser()
+        this.user = {
+          name: userData.name,
+          email: userData.email,
+          avatar: userData.avatar,
+          registrationDate: userData.registrationDate
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки данных пользователя:', error)
       }
     },
-    triggerAvatarInput() {
-      this.$refs.avatarInput.click()
+    toggleEdit() {
+      this.isEditing = !this.isEditing
     },
-    handleAvatarChange(event) {
+    async handleSubmit() {
+      try {
+        // Здесь будет логика обновления профиля
+        this.isEditing = false
+      } catch (error) {
+        console.error('Ошибка обновления профиля:', error)
+      }
+    },
+    async handleAvatarUpload(event) {
       const file = event.target.files[0]
-      if (file) {
+      if (!file) return
+
+      try {
         // Здесь будет логика загрузки аватара
-        console.log('Загрузка аватара:', file)
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          this.user.avatar = e.target.result
+        }
+        reader.readAsDataURL(file)
+      } catch (error) {
+        console.error('Ошибка загрузки аватара:', error)
       }
     },
     formatDate(date) {
-      if (!date) return null
+      if (!date) return ''
       return new Date(date).toLocaleDateString('ru-RU', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })
-    },
-    saveProfile() {
-      // Здесь будет логика сохранения профиля
-      this.user = { ...this.editedUser }
-      this.isEditMode = false
-    },
-    cancelEdit() {
-      this.isEditMode = false
-      this.editedUser = {}
     }
+  },
+  mounted() {
+    this.loadUserData()
   }
 }
 </script>
 
 <style scoped>
-.dashboard-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
+.profile-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
 }
 
-.back-button-container {
-  margin-bottom: 2rem;
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  margin-top: 80px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .back-button {
-  display: inline-flex;
+  margin-bottom: 1rem;
+}
+
+.back-button .btn {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background-color: white;
-  border: 1px solid #dee2e6;
-  border-radius: var(--border-radius);
+  background: white;
   color: var(--text-color);
-  font-size: 1rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
   box-shadow: var(--box-shadow);
 }
 
-.back-button:hover {
-  background-color: #f8f9fa;
+.back-button .btn:hover {
+  background: #f8f9fa;
   transform: translateX(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.back-arrow {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.profile-page {
+.profile-card {
   background: white;
   border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
   padding: 2rem;
+  box-shadow: var(--box-shadow);
 }
 
 .profile-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #f1f1f1;
+  text-align: center;
+  display: inline-block;
+  margin-left: 50%;
+  transform: translateX(-50%);
 }
 
 .profile-header h1 {
-  margin: 0;
+  font-size: 1.75rem;
   color: var(--text-color);
+  margin: 0;
+  white-space: nowrap;
 }
 
-.profile-content {
+.profile-header p {
+  margin: 0.5rem 0 0;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.profile-body {
   display: grid;
   grid-template-columns: 300px 1fr;
-  gap: 2rem;
+  gap: 3rem;
+  margin-top: -1rem;
 }
 
-.profile-avatar {
-  position: sticky;
-  top: 2rem;
-  height: fit-content;
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  margin-top: -2rem;
 }
 
-.avatar-container {
-  text-align: center;
-}
-
-.avatar-image {
+.avatar {
   width: 200px;
   height: 200px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 1rem;
-  border: 4px solid white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 4px solid var(--primary-color);
+  box-shadow: var(--box-shadow);
+  transition: transform 0.3s ease;
 }
 
-.avatar-upload {
+.avatar:hover {
+  transform: scale(1.05);
+}
+
+.avatar-actions {
+  margin-top: -1rem;
+}
+
+.avatar-actions .btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius);
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.avatar-actions .btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+}
+
+.avatar-actions .btn i {
+  font-size: 1.1rem;
+}
+
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.info-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.avatar-input {
-  display: none;
-}
-
-.profile-info {
-  display: grid;
-  gap: 2rem;
-}
-
-.info-section {
-  background: #f8f9fa;
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-}
-
-.info-section h2 {
-  margin-bottom: 1.5rem;
-  color: var(--text-color);
-}
-
-.info-grid {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.info-item {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.info-item label {
-  color: #6c757d;
+.info-group label {
   font-size: 0.9rem;
-}
-
-.info-item span {
+  color: #6c757d;
   font-weight: 500;
 }
 
+.info-value {
+  font-size: 1.1rem;
+  color: var(--text-color);
+}
+
+.info-value p {
+  margin: 0;
+}
+
 .form-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #dee2e6;
+  padding: 0.75rem 1rem;
+  border: 2px solid #edf2f7;
   border-radius: var(--border-radius);
   font-size: 1rem;
   transition: var(--transition);
+  width: 100%;
 }
 
 .form-input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+  box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1);
 }
 
-.form-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #dee2e6;
-  border-radius: var(--border-radius);
-  font-size: 1rem;
-  resize: vertical;
-  min-height: 100px;
-  transition: var(--transition);
-}
-
-.form-textarea:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.stat-item {
-  text-align: center;
-  padding: 1rem;
-  background: white;
-  border-radius: var(--border-radius);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.stat-value {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--primary-color);
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  color: #6c757d;
-  font-size: 0.9rem;
-}
-
-.profile-actions {
+.form-actions {
   display: flex;
   gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #f1f1f1;
+  margin-top: 1rem;
 }
 
 .btn {
   padding: 0.75rem 1.5rem;
+  border: none;
   border-radius: var(--border-radius);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
 }
@@ -428,54 +362,74 @@ export default {
 .btn-primary {
   background: var(--primary-color);
   color: white;
-  border: none;
 }
 
 .btn-primary:hover {
-  background: var(--secondary-color);
+  background: var(--accent-color);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
 }
 
 .btn-secondary {
-  background: white;
+  background: #f8f9fa;
   color: var(--text-color);
-  border: 1px solid #dee2e6;
 }
 
 .btn-secondary:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 768px) {
-  .dashboard-container {
-    padding: 1rem;
-  }
-
-  .profile-page {
-    padding: 1.5rem;
-  }
-
-  .profile-content {
+  .profile-body {
     grid-template-columns: 1fr;
+    gap: 2rem;
   }
 
-  .profile-avatar {
-    position: static;
+  .avatar-section {
+    margin-bottom: 2rem;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-actions {
+  .form-actions {
     flex-direction: column;
   }
 
   .btn {
     width: 100%;
   }
+}
+
+.avatar-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+  border: 3px solid var(--primary-color);
+  box-shadow: var(--box-shadow);
+}
+
+.avatar-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.avatar-actions .btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.avatar-actions .btn i {
+  margin-right: 0.5rem;
+}
+
+.is-uploading {
+  opacity: 0.7;
+  pointer-events: none;
 }
 </style> 

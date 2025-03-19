@@ -8,9 +8,9 @@
       </div>
       <nav class="header__nav" :class="{ active: isMenuOpen }">
         <ul>
-          <li><a href="#courses">Мои курсы</a></li>
+          <li><a :href="isTeacher ? '/teacher/courses' : '#courses'">Мои курсы</a></li>
           <li><a @click="goToAllCourses" class="cursor-pointer">Все курсы</a></li>
-          <li><a href="#assignments">Задания</a></li>
+          <li><a :href="isTeacher ? '/teacher/assignments' : '#assignments'">Задания</a></li>
           <li><a href="#calendar">Календарь</a></li>
         </ul>
       </nav>
@@ -38,13 +38,9 @@
           <img :src="user.avatar" :alt="user.name" class="user-avatar">
           <span class="user-name">{{ user.name }}</span>
           <div class="user-menu" v-if="showUserMenu">
-            <router-link to="/profile" class="menu-item">
+            <router-link :to="isTeacher ? '/teacher/profile' : '/profile'" class="menu-item">
               <i class="fas fa-user"></i>
               Мой профиль
-            </router-link>
-            <router-link to="/teacher/dashboard" class="menu-item">
-              <i class="fas fa-chalkboard-teacher"></i>
-              Панель преподавателя
             </router-link>
             <router-link to="/settings" class="menu-item">
               <i class="fas fa-cog"></i>
@@ -63,6 +59,8 @@
 </template>
 
 <script>
+import { authService } from '@/services/authService';
+
 export default {
   name: 'Header',
   data() {
@@ -74,7 +72,8 @@ export default {
         id: 1,
         name: 'Иван Петров',
         avatar: '/images/student_icon.png',
-        email: 'ivan@example.com'
+        email: 'ivan@example.com',
+        role: null
       },
       notifications: [
         {
@@ -98,6 +97,11 @@ export default {
       ]
     }
   },
+  computed: {
+    isTeacher() {
+      return this.user.role === 'TEACHER';
+    }
+  },
   methods: {
     toggleMenu() {
       this.isMenuOpen = !this.isMenuOpen;
@@ -115,13 +119,28 @@ export default {
       }
     },
     logout() {
-      localStorage.removeItem('user');
-      this.$router.push('/');
+      authService.logout();
+      this.$router.push('/auth');
     },
     goToAllCourses() {
       this.$router.push('/all-courses');
-      this.isMenuOpen = false; // Закрываем мобильное меню после перехода
+      this.isMenuOpen = false;
+    },
+    loadUserData() {
+      const user = authService.getCurrentUser();
+      if (user) {
+        this.user = {
+          ...this.user,
+          name: user.name,
+          avatar: user.avatar || '/images/student_icon.png',
+          email: user.email,
+          role: user.role
+        };
+      }
     }
+  },
+  mounted() {
+    this.loadUserData();
   }
 }
 </script>
@@ -393,7 +412,7 @@ export default {
     gap: 0;
     padding: 1rem 0;
   }
-  
+
   .header__nav li {
     width: 100%;
   }

@@ -5,7 +5,7 @@
     <main class="main">
       <div class="dashboard-container">
         <div class="dashboard-header">
-          <h1>Панель преподавателя</h1>
+          <h1>Панель управления курсами</h1>
           <button class="create-course-btn" @click="showCreateCourseModal = true">
             <i class="fas fa-plus"></i>
             Создать новый курс

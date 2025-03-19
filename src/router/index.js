@@ -61,7 +61,7 @@ const routes = [
     path: '/teacher/dashboard',
     name: 'TeacherDashboard',
     component: TeacherDashboard,
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresTeacher: true }
   },
   {
     path: '/teacher/courses/:id/edit',
@@ -77,6 +77,12 @@ const routes = [
       requiresAuth: true,
       requiresTeacher: true
     }
+  },
+  {
+    path: '/teacher/profile',
+    name: 'TeacherProfile',
+    component: ProfilePage,
+    meta: { requiresAuth: true, requiresTeacher: true }
   }
 ]
 
@@ -93,11 +99,30 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/auth');
   } else if (to.path === '/auth' && isAuthenticated) {
+    // Получаем роль пользователя
+    let userRole = user.role;
+    if (typeof userRole === 'object' && userRole.name) {
+      userRole = userRole.name;
+    }
+    userRole = String(userRole).toUpperCase();
+    console.log('User role in router:', userRole); // Добавляем логирование
+    
     // Перенаправляем на соответствующий dashboard в зависимости от роли
-    next(user.role === 'TEACHER' ? '/teacher/dashboard' : '/dashboard');
-  } else if (to.meta.requiresTeacher && user?.role !== 'TEACHER') {
-    // Если маршрут требует роль преподавателя, но пользователь не преподаватель
-    next('/dashboard');
+    next(userRole === 'TEACHER' ? '/teacher/dashboard' : '/dashboard');
+  } else if (to.meta.requiresTeacher) {
+    // Получаем роль пользователя
+    let userRole = user?.role;
+    if (typeof userRole === 'object' && userRole.name) {
+      userRole = userRole.name;
+    }
+    userRole = String(userRole).toUpperCase();
+    console.log('User role in teacher check:', userRole); // Добавляем логирование
+    
+    if (userRole !== 'TEACHER') {
+      next('/dashboard');
+    } else {
+      next();
+    }
   } else {
     next();
   }

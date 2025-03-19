@@ -12,7 +12,11 @@ export const authService = {
                 withCredentials: true
             });
             
+            console.log('Full server response:', response.data);
+            console.log('User object from server:', response.data.user);
+            
             if (response.data.user) {
+                console.log('Login response:', response.data.user);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
             }
             return response.data;
@@ -42,7 +46,11 @@ export const authService = {
                 withCredentials: true
             });
             
+            console.log('Full server response:', response.data);
+            console.log('User object from server:', response.data.user);
+            
             if (response.data.user) {
+                console.log('Register response:', response.data.user);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
             }
             return response.data;
@@ -66,7 +74,18 @@ export const authService = {
     },
 
     getCurrentUser() {
-        return JSON.parse(localStorage.getItem('user'));
+        const user = JSON.parse(localStorage.getItem('user'));
+        console.log('Raw user from localStorage:', user);
+        console.log('User role type:', typeof user?.role);
+        console.log('User role value:', user?.role);
+        
+        if (user && user.role) {
+            if (typeof user.role === 'object' && user.role.name) {
+                user.role = user.role.name;
+            }
+            user.role = String(user.role).toUpperCase();
+        }
+        return user;
     },
 
     getToken() {
