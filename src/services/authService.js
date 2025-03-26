@@ -1,35 +1,44 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api/auth';
+const API_URL = 'http://localhost:8080/api';
+
+const api = axios.create({
+    baseURL: API_URL,
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    },
+    withCredentials: true
+});
 
 export const authService = {
     async login(email, password) {
         try {
-            const response = await axios.post(`${API_URL}/login`, {
+            const response = await api.post('/auth/login', {
                 email,
                 password
-            }, {
-                withCredentials: true
             });
             
-            console.log('Full server response:', response.data);
-            console.log('User object from server:', response.data.user);
+            console.log('=== Информация о входе ===');
+            console.log('Ответ сервера:', response.data);
+            console.log('Заголовки ответа:', response.headers);
+            console.log('Куки после входа:', document.cookie);
             
             if (response.data.user) {
-                console.log('Login response:', response.data.user);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
+                return response.data;
+            } else {
+                throw new Error('Пользователь не найден в ответе сервера');
             }
-            return response.data;
         } catch (error) {
+            console.error('=== Ошибка при входе ===');
+            console.error('Ошибка:', error);
             if (error.response) {
-                // Сервер ответил с ошибкой
-                const errorMessage = error.response.data;
-                throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Ошибка при входе в систему');
+                console.error('Ответ сервера с ошибкой:', error.response.data);
+                throw new Error(typeof error.response.data === 'string' ? error.response.data : 'Ошибка при входе в систему');
             } else if (error.request) {
-                // Запрос был сделан, но ответ не получен
                 throw new Error('Сервер недоступен. Проверьте подключение к интернету');
             } else {
-                // Ошибка при настройке запроса
                 throw new Error('Ошибка при отправке запроса');
             }
         }
@@ -37,58 +46,65 @@ export const authService = {
 
     async register(userData) {
         try {
-            const response = await axios.post(`${API_URL}/register`, {
+            const response = await api.post('/auth/register', {
                 email: userData.email,
                 password: userData.password,
                 name: userData.name,
                 role: userData.role.toUpperCase()
-            }, {
-                withCredentials: true
             });
             
-            console.log('Full server response:', response.data);
-            console.log('User object from server:', response.data.user);
+            console.log('=== Информация о регистрации ===');
+            console.log('Ответ сервера:', response.data);
+            console.log('Заголовки ответа:', response.headers);
+            console.log('Куки после регистрации:', document.cookie);
             
             if (response.data.user) {
-                console.log('Register response:', response.data.user);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
+                return response.data;
+            } else {
+                throw new Error('Пользователь не найден в ответе сервера');
             }
-            return response.data;
         } catch (error) {
+            console.error('=== Ошибка при регистрации ===');
+            console.error('Ошибка:', error);
             if (error.response) {
-                // Сервер ответил с ошибкой
-                const errorMessage = error.response.data;
-                throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Ошибка при регистрации');
+                console.error('Ответ сервера с ошибкой:', error.response.data);
+                throw new Error(typeof error.response.data === 'string' ? error.response.data : 'Ошибка при регистрации');
             } else if (error.request) {
-                // Запрос был сделан, но ответ не получен
                 throw new Error('Сервер недоступен. Проверьте подключение к интернету');
             } else {
-                // Ошибка при настройке запроса
                 throw new Error('Ошибка при отправке запроса');
             }
         }
     },
 
-    logout() {
-        localStorage.removeItem('user');
+    async logout() {
+        try {
+            await api.post('/auth/logout');
+            localStorage.removeItem('user');
+        } catch (error) {
+            console.error('Ошибка при выходе:', error);
+            localStorage.removeItem('user');
+        }
     },
 
     getCurrentUser() {
         const user = JSON.parse(localStorage.getItem('user'));
-        console.log('Raw user from localStorage:', user);
-        console.log('User role type:', typeof user?.role);
-        console.log('User role value:', user?.role);
+        if (!user) {
+            return null;
+        }
         
-        if (user && user.role) {
+        if (user.role) {
             if (typeof user.role === 'object' && user.role.name) {
                 user.role = user.role.name;
             }
             user.role = String(user.role).toUpperCase();
         }
+        
         return user;
     },
 
-    getToken() {
-        return localStorage.getItem('token');
+    isAuthenticated() {
+        return !!this.getCurrentUser();
     }
-}; 
+};

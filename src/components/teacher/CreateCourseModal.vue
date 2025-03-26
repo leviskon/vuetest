@@ -47,42 +47,30 @@
         </div>
 
         <div class="form-group">
-          <label for="duration">Длительность курса (часы)</label>
-          <input 
-            type="number" 
-            id="duration" 
-            v-model="form.duration" 
-            required
-            min="1"
-          >
-        </div>
-
-        <div class="form-group">
           <label for="level">Уровень сложности</label>
           <select id="level" v-model="form.level" required>
-            <option value="beginner">Начинающий</option>
-            <option value="intermediate">Средний</option>
-            <option value="advanced">Продвинутый</option>
+            <option value="BEGINNER">Начинающий</option>
+            <option value="INTERMEDIATE">Средний</option>
+            <option value="ADVANCED">Продвинутый</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="price">Цена курса (₽)</label>
-          <input 
-            type="number" 
-            id="price" 
-            v-model="form.price" 
-            required
-            min="0"
-          >
+          <label for="category">Категория</label>
+          <select id="category" v-model="form.category" required>
+            <option value="Programming">Программирование</option>
+            <option value="Design">Дизайн</option>
+            <option value="Marketing">Маркетинг</option>
+            <option value="Business">Бизнес</option>
+          </select>
         </div>
 
         <div class="form-actions">
           <button type="button" class="cancel-btn" @click="closeModal">
             Отмена
           </button>
-          <button type="submit" class="submit-btn">
-            Создать курс
+          <button type="submit" class="submit-btn" :disabled="isLoading">
+            {{ isLoading ? 'Создание...' : 'Создать курс' }}
           </button>
         </div>
       </form>
@@ -91,6 +79,8 @@
 </template>
 
 <script>
+import { courseService } from '@/services/api'
+
 export default {
   name: 'CreateCourseModal',
   data() {
@@ -99,11 +89,11 @@ export default {
         title: '',
         description: '',
         image: null,
-        duration: 1,
-        level: 'beginner',
-        price: 0
+        level: 'BEGINNER',
+        category: 'Programming'
       },
-      imagePreview: null
+      imagePreview: null,
+      isLoading: false
     }
   },
   methods: {
@@ -121,8 +111,31 @@ export default {
         reader.readAsDataURL(file)
       }
     },
-    handleSubmit() {
-      this.$emit('create', { ...this.form })
+    async handleSubmit() {
+      try {
+        this.isLoading = true
+        
+        // Подготавливаем данные для отправки
+        const courseData = {
+          name: this.form.title,
+          description: this.form.description,
+          level: this.form.level,
+          category: this.form.category,
+          imageFile: this.form.image
+        }
+
+        // Отправляем запрос на создание курса
+        const createdCourse = await courseService.createCourse(courseData)
+        
+        // Закрываем модальное окно и уведомляем родительский компонент
+        this.$emit('course-created', createdCourse)
+        this.closeModal()
+      } catch (error) {
+        console.error('Ошибка при создании курса:', error)
+        alert(error.message || 'Произошла ошибка при создании курса')
+      } finally {
+        this.isLoading = false
+      }
     }
   }
 }
@@ -337,6 +350,13 @@ export default {
 .submit-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(76, 201, 240, 0.3);
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {
