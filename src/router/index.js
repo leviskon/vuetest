@@ -9,6 +9,7 @@ import ProfilePage from '@/views/ProfilePage.vue'
 import SettingsPage from '@/views/SettingsPage.vue'
 import TeacherDashboard from '@/views/TeacherDashboard.vue'
 import EditCourse from '@/views/EditCourse.vue'
+import TeacherCalendar from '@/components/TeacherCalendar.vue'
 
 const routes = [
   {
@@ -82,6 +83,12 @@ const routes = [
     path: '/teacher/profile',
     name: 'TeacherProfile',
     component: ProfilePage,
+    meta: { requiresAuth: true, requiresTeacher: true }
+  },
+  {
+    path: '/teacher/calendar',
+    name: 'TeacherCalendar',
+    component: TeacherCalendar,
     meta: { requiresAuth: true, requiresTeacher: true }
   }
 ]

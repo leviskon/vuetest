@@ -8,10 +8,12 @@
       </div>
       <nav class="header__nav" :class="{ active: isMenuOpen }">
         <ul>
-          <li><a :href="isTeacher ? '/teacher/courses' : '#courses'">Мои курсы</a></li>
-          <li><a @click="goToAllCourses" class="cursor-pointer">Все курсы</a></li>
-          <li><a :href="isTeacher ? '/teacher/assignments' : '#assignments'">Задания</a></li>
-          <li><a href="#calendar">Календарь</a></li>
+          <template v-if="isTeacher">
+            <li><a @click="openTeacherCalendar" class="cursor-pointer">Календарь</a></li>
+          </template>
+          <template v-else>
+            <li><a @click="goToAllCourses" class="cursor-pointer">Все курсы</a></li>
+          </template>
         </ul>
       </nav>
       <div class="header__user">
@@ -41,10 +43,6 @@
             <router-link :to="isTeacher ? '/teacher/profile' : '/profile'" class="menu-item">
               <i class="fas fa-user"></i>
               Мой профиль
-            </router-link>
-            <router-link to="/settings" class="menu-item">
-              <i class="fas fa-cog"></i>
-              Настройки
             </router-link>
             <div class="menu-divider"></div>
             <a href="#" class="menu-item" @click.prevent="logout">
@@ -118,12 +116,16 @@ export default {
         this.showNotifications = false;
       }
     },
-    logout() {
-      authService.logout();
-      this.$router.push('/auth');
+    async logout() {
+      await authService.logout();
+      this.$router.push('/');
     },
     goToAllCourses() {
       this.$router.push('/all-courses');
+      this.isMenuOpen = false;
+    },
+    openTeacherCalendar() {
+      this.$router.push('/teacher/calendar');
       this.isMenuOpen = false;
     },
     loadUserData() {
