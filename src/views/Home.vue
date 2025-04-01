@@ -143,21 +143,6 @@
                 <a href="#" class="social-link"><i class="fab fa-youtube"></i></a>
               </div>
             </div>
-            <form class="contact__form" @submit.prevent="submitForm">
-              <div class="form-group">
-                <label for="name">Ваше имя</label>
-                <input type="text" id="name" v-model="form.name" required>
-              </div>
-              <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" v-model="form.email" required>
-              </div>
-              <div class="form-group">
-                <label for="message">Сообщение</label>
-                <textarea id="message" v-model="form.message" required></textarea>
-              </div>
-              <button type="submit" class="btn btn-primary">Отправить</button>
-            </form>
           </div>
         </div>
       </section>
@@ -228,18 +213,24 @@ export default {
 /* Header Styles */
 .header {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000;
-  background: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 1000px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  padding: 0.5rem 0;
 }
 
 .header__container {
-  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-  padding: 1rem 2rem;
+  padding: 0.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -247,24 +238,83 @@ export default {
 
 .header__nav ul {
   display: flex;
-  gap: 2rem;
+  gap: 2.5rem;
   list-style: none;
 }
 
 .header__nav a {
   color: var(--text-color);
   text-decoration: none;
-  font-weight: 600;
-  transition: var(--transition);
+  font-weight: 500;
+  font-size: 1.1rem;
+  position: relative;
+  padding: 0.5rem 0;
 }
 
-.header__nav a:hover {
-  color: var(--primary-color);
+.header__nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary-color);
+  transition: width 0.3s ease;
+}
+
+.header__nav a:hover::after {
+  width: 100%;
 }
 
 .header__auth {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+.btn-login {
+  background: transparent;
+  color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+  padding: 0.8rem 1.8rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border-radius: 10px;
+}
+
+.btn-login:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.btn-register {
+  background: var(--primary-color);
+  color: white;
+  padding: 0.8rem 1.8rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border-radius: 10px;
+}
+
+.btn-register:hover {
+  background: var(--primary-color-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.burger-menu {
+  display: none;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.burger-menu span {
+  display: block;
+  width: 25px;
+  height: 2px;
+  background: var(--text-color);
+  margin: 5px 0;
+  transition: all 0.3s ease;
 }
 
 /* Hero Section */
@@ -272,7 +322,8 @@ export default {
   height: 100vh;
   position: relative;
   overflow: hidden;
-  margin-top: 60px;
+  margin-top: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 0 95%);
 }
 
 .hero__background {
@@ -418,9 +469,8 @@ export default {
 }
 
 .contact__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
+  display: flex;
+  justify-content: center;
   padding: 0 2rem;
 }
 
@@ -428,64 +478,53 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  max-width: 500px;
+  text-align: center;
 }
 
 .contact__details {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .contact__item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
+  font-size: 1.1rem;
+}
+
+.contact__item i {
+  font-size: 1.5rem;
+  color: var(--primary-color);
 }
 
 .social-links {
   display: flex;
-  gap: 1rem;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
 }
 
 .social-link {
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
   background: var(--primary-color);
   color: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
 }
 
 .social-link:hover {
   transform: translateY(-3px);
-}
-
-.contact__form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group input,
-.form-group textarea {
-  padding: 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 1rem;
-}
-
-.form-group textarea {
-  height: 150px;
-  resize: vertical;
+  background: var(--primary-color-dark);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 /* Footer */
@@ -522,24 +561,55 @@ export default {
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .header {
+    top: 1rem;
+    width: 95%;
+    padding: 0.3rem 0;
+  }
+
+  .header__container {
+    padding: 0.3rem 1rem;
+  }
+
+  .burger-menu {
+    display: block;
+  }
+
   .header__nav {
     display: none;
-  }
-  
-  .header__nav.active {
-    display: block;
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
     padding: 1rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-top: none;
+  }
+  
+  .header__nav.active {
+    display: block;
   }
   
   .header__nav ul {
     flex-direction: column;
     gap: 1rem;
+    align-items: center;
+  }
+
+  .header__auth {
+    flex-direction: column;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .btn-login,
+  .btn-register {
+    width: 100%;
+    text-align: center;
   }
   
   .hero__title {
@@ -598,5 +668,12 @@ export default {
 .btn-secondary:hover {
   background: white;
   color: var(--primary-color);
+}
+
+.main {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 </style>
