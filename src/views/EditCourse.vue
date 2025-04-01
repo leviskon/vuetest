@@ -1,5 +1,8 @@
 <template>
   <div class="edit-course">
+    <div v-if="showNotification" class="notification">
+      {{ notificationMessage }}
+    </div>
     <div class="edit-course-container">
       <!-- Добавляем кнопку "Назад" -->
       <button class="back-btn" @click="goBack">
@@ -40,46 +43,36 @@
           <div class="panel-header">
             <h2>Содержание курса</h2>
             <div class="panel-actions">
-              <button class="add-btn" @click="showAddContentModal = true">
+              <button class="add-btn" @click="showMaterialModal = true">
                 <i class="fas fa-plus"></i>
-                Добавить контент
+                Добавить материал
               </button>
             </div>
           </div>
 
           <div class="content-list">
-            <div ref="modulesList" class="modules-list">
-              <div v-for="module in course.modules" :key="module.id" class="module-item">
-                <div class="module-header">
+            <div ref="materialsList" class="materials-list">
+              <div v-for="material in course.materials" :key="material.id" class="material-item">
+                <div class="material-header">
                   <i class="fas fa-grip-vertical handle"></i>
                   <input 
-                    v-model="module.title" 
-                    class="module-title-input"
-                    placeholder="Название модуля"
+                    v-model="material.title" 
+                    class="material-title-input"
+                    placeholder="Название материала"
                   >
-                  <div class="module-actions">
-                    <button @click="deleteModule(module.id)">
+                  <div class="material-actions">
+                    <button @click="deleteMaterial(material.id)">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
                 </div>
 
-                <div ref="lessonsList" class="lessons-list">
-                  <div v-for="lesson in module.lessons" :key="lesson.id" class="lesson-item">
-                    <div class="lesson-content">
-                      <i class="fas fa-grip-vertical handle"></i>
-                      <i :class="getLessonIcon(lesson.type)"></i>
-                      <span>{{ lesson.title }}</span>
-                    </div>
-                    <div class="lesson-actions">
-                      <button @click="editLesson(lesson, module.id)">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button @click="deleteLesson(module.id, lesson.id)">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </div>
+                <div class="material-description">
+                  <textarea 
+                    v-model="material.description" 
+                    class="material-description-input"
+                    placeholder="Описание материала"
+                  ></textarea>
                 </div>
               </div>
             </div>
@@ -138,222 +131,49 @@
       </div>
     </div>
 
-    <!-- Модальное окно добавления контента -->
-    <div v-if="showAddContentModal" class="modal">
+    <!-- Модальное окно добавления материала -->
+    <div v-if="showMaterialModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Добавить контент</h2>
-          <button class="close-btn" @click="showAddContentModal = false">
+          <h2>Добавить материал</h2>
+          <button class="close-btn" @click="showMaterialModal = false">
             <i class="fas fa-times"></i>
           </button>
         </div>
         <div class="modal-body">
-          <div class="content-types">
-            <button 
-              v-for="type in contentTypes" 
-              :key="type.id"
-              class="content-type-btn"
-              :class="{ active: selectedContentType === type.id }"
-              @click="selectContentType(type)"
-            >
-              <i :class="type.icon"></i>
-              <span>{{ type.label }}</span>
-            </button>
-          </div>
-
-          <!-- Секция для видеоурока -->
-          <div v-if="selectedContentType === 'video'" class="content-section">
             <div class="form-group">
-              <label>Название видеоурока</label>
+            <label>Название материала</label>
               <input 
                 type="text" 
-                v-model="newContent.title" 
+              v-model="newMaterial.title" 
                 class="form-input"
-                placeholder="Введите название видеоурока"
+              placeholder="Введите название материала"
               >
             </div>
             <div class="form-group">
-              <label>Ссылка на видео</label>
-              <input 
-                type="url" 
-                v-model="newContent.videoUrl" 
-                class="form-input"
-                placeholder="Вставьте ссылку на видео"
-              >
-            </div>
-            <div class="form-group">
-              <label>Описание</label>
+            <label>Описание материала</label>
               <textarea 
-                v-model="newContent.description" 
+              v-model="newMaterial.description" 
                 class="form-input"
-                placeholder="Введите описание видеоурока"
-              ></textarea>
-            </div>
-          </div>
-
-          <!-- Секция для задания -->
-          <div v-if="selectedContentType === 'task'" class="content-section">
-            <div class="form-group">
-              <label>Название задания</label>
-              <input 
-                type="text" 
-                v-model="newContent.title" 
-                class="form-input"
-                placeholder="Введите название задания"
-              >
-            </div>
-            <div class="form-group">
-              <label>Описание задания</label>
-              <textarea 
-                v-model="newContent.description" 
-                class="form-input"
-                placeholder="Введите описание задания"
+              placeholder="Введите описание материала"
               ></textarea>
             </div>
             <div class="form-group">
-              <label>Критерии оценки</label>
-              <textarea 
-                v-model="newContent.criteria" 
-                class="form-input"
-                placeholder="Введите критерии оценки задания"
-              ></textarea>
-            </div>
-          </div>
-
-          <!-- Секция для теста -->
-          <div v-if="selectedContentType === 'quiz'" class="content-section">
-            <div class="form-group">
-              <label>Название теста</label>
-              <input 
-                type="text" 
-                v-model="newContent.title" 
-                class="form-input"
-                placeholder="Введите название теста"
-              >
-            </div>
-            <div class="form-group">
-              <label>Описание теста</label>
-              <textarea 
-                v-model="newContent.description" 
-                class="form-input"
-                placeholder="Введите описание теста"
-              ></textarea>
-            </div>
-            <div class="form-group">
-              <label>Время на выполнение (в минутах)</label>
-              <input 
-                type="number" 
-                v-model="newContent.timeLimit" 
-                class="form-input"
-                min="1"
-                placeholder="Введите время в минутах"
-              >
-            </div>
-          </div>
-
-          <!-- Секция для файлов -->
-          <div v-if="selectedContentType === 'file'" class="content-section">
-            <div class="form-group">
-              <label>Название раздела с файлами</label>
-              <input 
-                type="text" 
-                v-model="newContent.title" 
-                class="form-input"
-                placeholder="Введите название раздела"
-              >
-            </div>
-            <div class="form-group">
-              <label>Описание</label>
-              <textarea 
-                v-model="newContent.description" 
-                class="form-input"
-                placeholder="Введите описание файлов"
-              ></textarea>
-            </div>
-            <div class="file-upload-section">
-              <div class="file-upload-area">
+            <label>Файл материала</label>
                 <input 
                   type="file" 
                   ref="fileInput" 
                   @change="handleFileUpload" 
                   class="file-input"
-                  multiple
                 >
-                <div class="file-upload-placeholder">
-                  <i class="fas fa-cloud-upload-alt"></i>
-                  <p>Перетащите файлы сюда или кликните для выбора</p>
-                  <span class="file-types">Поддерживаемые форматы: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</span>
                 </div>
               </div>
-              <div v-if="selectedFiles.length > 0" class="selected-files">
-                <h3>Выбранные файлы:</h3>
-                <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
-                  <i class="fas fa-file"></i>
-                  <span class="file-name">{{ file.name }}</span>
-                  <span class="file-size">{{ formatFileSize(file.size) }}</span>
-                  <button @click="removeFile(index)" class="remove-file-btn">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-if="selectedContentType" class="modal-footer">
-          <button class="cancel-btn" @click="showAddContentModal = false">Отмена</button>
-          <button class="save-btn" @click="saveContent">
+        <div v-if="newMaterial.file" class="modal-footer">
+          <button class="cancel-btn" @click="showMaterialModal = false">Отмена</button>
+          <button class="save-btn" @click="addMaterial">
             <i class="fas fa-save"></i>
             Сохранить
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модальное окно редактирования урока -->
-    <div v-if="showEditLessonModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Редактировать урок</h2>
-          <button class="close-btn" @click="showEditLessonModal = false">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Название урока</label>
-            <input 
-              type="text" 
-              v-model="editingLesson.title" 
-              class="form-input"
-              placeholder="Введите название урока"
-            >
-          </div>
-          <div class="form-group">
-            <label>Тип урока</label>
-            <select v-model="editingLesson.type" class="form-input">
-              <option value="video">Видеоурок</option>
-              <option value="task">Задание</option>
-              <option value="quiz">Тест</option>
-              <option value="file">Файл</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Описание</label>
-            <textarea 
-              v-model="editingLesson.description" 
-              class="form-input"
-              placeholder="Введите описание урока"
-            ></textarea>
-          </div>
-          <div class="form-actions">
-            <button class="save-btn" @click="saveLesson">
-              <i class="fas fa-save"></i>
-              Сохранить
-            </button>
-            <button class="cancel-btn" @click="showEditLessonModal = false">
-              Отмена
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -371,242 +191,206 @@ export default defineComponent({
     const route = useRoute()
     const router = useRouter()
     const courseId = route.params.id
-    const modulesList = ref(null)
-    const lessonsList = ref([])
-
-    // Здесь можно добавить загрузку данных курса по ID
-    const loadCourseData = async () => {
-      try {
-        // TODO: Заменить на реальный API-запрос
-        console.log('Loading course data for ID:', courseId)
-        // const response = await api.getCourse(courseId)
-        // course.value = response.data
-      } catch (error) {
-        console.error('Error loading course:', error)
-      }
-    }
+    const materialsList = ref(null)
 
     onMounted(() => {
-      loadCourseData()
-
-      // Инициализация сортировки для модулей
-      if (modulesList.value) {
-        new Sortable(modulesList.value, {
-          group: 'modules',
+      // Инициализация сортировки для материалов
+      if (materialsList.value) {
+        new Sortable(materialsList.value, {
+          group: 'materials',
           animation: 150,
           handle: '.handle',
           onEnd: (evt) => {
-            console.log('Module reordered:', evt)
+            console.log('Material reordered:', evt)
           }
         })
       }
-
-      // Инициализация сортировки для уроков в каждом модуле
-      const lessonsContainers = document.querySelectorAll('.lessons-list')
-      lessonsContainers.forEach(container => {
-        new Sortable(container, {
-          group: 'lessons',
-          animation: 150,
-          handle: '.handle',
-          onEnd: (evt) => {
-            console.log('Lesson reordered:', evt)
-          }
-        })
-      })
     })
 
     return {
-      modulesList,
-      lessonsList,
+      materialsList,
       courseId,
       router
     }
   },
   data() {
     return {
-      showAddContentModal: false,
-      showEditLessonModal: false,
-      editingLesson: null,
-      currentModuleId: null,
       course: {
-        id: 1,
-        title: 'Веб-разработка',
-        description: 'Курс по основам веб-разработки',
-        modules: [
-          {
-            id: 1,
-            title: 'Введение в HTML',
-            lessons: [
-              { 
-                id: 1, 
-                type: 'video', 
-                title: 'Основы HTML',
-                description: 'Введение в основы HTML разметки'
-              },
-              { 
-                id: 2, 
-                type: 'task', 
-                title: 'Практическое задание: Создание первой страницы',
-                description: 'Создание простой HTML страницы с основными элементами'
-              }
-            ]
-          }
-        ],
-        stats: {
-          activeStudents: 45,
-          averageProgress: 68,
-          averageRating: 4.7
-        },
-        students: [
-          {
-            id: 1,
-            name: 'Иван Петров',
-            avatar: '/images/student_icon.png',
-            progress: 75
-          },
-          {
-            id: 2,
-            name: 'Мария Сидорова',
-            avatar: '/images/student_icon.png',
-            progress: 90
-          }
-        ]
-      },
-      contentTypes: [
-        { id: 'video', label: 'Видеоурок', icon: 'fas fa-video' },
-        { id: 'task', label: 'Задание', icon: 'fas fa-tasks' },
-        { id: 'quiz', label: 'Тест', icon: 'fas fa-question-circle' },
-        { id: 'file', label: 'Файл', icon: 'fas fa-file-alt' }
-      ],
-      selectedContentType: null,
-      selectedFiles: [],
-      newContent: {
+        id: null,
         title: '',
         description: '',
-        videoUrl: '',
-        criteria: '',
-        timeLimit: null,
+        imageUrl: '',
+        level: '',
+        category: '',
+        materials: [],
+        stats: {
+          activeStudents: 0,
+          averageProgress: 0,
+          averageRating: 0
+        },
+        students: []
       },
+      newMaterial: {
+        title: '',
+        description: '',
+        file: null
+      },
+      showMaterialModal: false,
+      loading: false,
+      showNotification: false,
+      notificationMessage: ''
+    }
+  },
+  async created() {
+    const route = useRoute()
+    const courseId = route.params.id
+    
+    try {
+      console.log('Загрузка данных курса с ID:', courseId)
+      const response = await fetch(`http://localhost:8080/api/courses/${courseId}`, {
+        credentials: 'include'
+      })
+
+      if (response.status === 403) {
+        console.error('Ошибка доступа: нет прав для доступа к курсу')
+        alert('У вас нет прав для доступа к этому курсу')
+        this.$router.push('/teacher/dashboard')
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(`Ошибка HTTP: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('Получены данные курса:', data)
+
+      this.course = {
+        id: data.id,
+        title: data.name,
+        description: data.description,
+        imageUrl: data.imageUrl,
+        level: data.level,
+        category: data.category,
+        materials: [],
+        stats: {
+          activeStudents: data.totalStudents || 0,
+          averageProgress: 0,
+          averageRating: 0
+        },
+        students: []
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке курса:', error)
+      console.error('Детали ошибки:', {
+        message: error.message,
+        stack: error.stack
+      })
+      alert('Не удалось загрузить данные курса')
+      this.$router.push('/teacher/dashboard')
     }
   },
   methods: {
+    goBack() {
+      this.$router.push('/teacher/dashboard')
+    },
     async saveCourse() {
+      this.loading = true
       try {
-        // TODO: Здесь будет API-запрос для сохранения курса
-        console.log('Сохранение курса:', this.course)
+        const formData = new FormData()
+        formData.append('name', this.course.title)
+        formData.append('description', this.course.description)
+        formData.append('level', this.course.level)
+        formData.append('category', this.course.category)
+
+        const response = await fetch(`http://localhost:8080/api/courses/${this.course.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Ошибка при сохранении курса')
+        }
+
+        this.notificationMessage = 'Курс успешно сохранен'
+        this.showNotification = true
         
-        // После успешного сохранения перенаправляем на панель преподавателя
-        this.router.push('/teacher/dashboard')
+        setTimeout(() => {
+          this.$router.push('/teacher/dashboard')
+        }, 1000)
       } catch (error) {
         console.error('Ошибка при сохранении курса:', error)
-        // Здесь можно добавить обработку ошибок, например, показ уведомления
+        this.notificationMessage = 'Не удалось сохранить курс'
+        this.showNotification = true
+      } finally {
+        this.loading = false
       }
-    },
-    goBack() {
-      this.router.push('/teacher/dashboard')
     },
     previewCourse() {
-      // Здесь будет логика предпросмотра курса
-      this.$router.push(`/course/${this.course.id}/preview`)
+      // Реализация предпросмотра курса
+      console.log('Предпросмотр курса:', this.course)
     },
-    deleteModule(moduleId) {
-      this.course.modules = this.course.modules.filter(m => m.id !== moduleId)
-    },
-    editLesson(lesson, moduleId) {
-      // Создаем копию урока с гарантированным наличием всех полей
-      this.editingLesson = { 
-        id: lesson.id,
-        title: lesson.title || '',
-        type: lesson.type || 'video',
-        description: lesson.description || ''
+    async addMaterial() {
+      if (!this.newMaterial.title || !this.newMaterial.file) {
+        alert('Пожалуйста, заполните все поля')
+        return
       }
-      this.currentModuleId = moduleId
-      this.showEditLessonModal = true
-    },
-    deleteLesson(moduleId, lessonId) {
-      const module = this.course.modules.find(m => m.id === moduleId)
-      if (module) {
-        module.lessons = module.lessons.filter(l => l.id !== lessonId)
+
+      const formData = new FormData()
+      formData.append('title', this.newMaterial.title)
+      formData.append('description', this.newMaterial.description)
+      formData.append('file', this.newMaterial.file)
+
+      try {
+        const response = await fetch(`http://localhost:8080/api/courses/${this.course.id}/materials`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Ошибка при добавлении материала')
+        }
+
+        const material = await response.json()
+        this.course.materials.push(material)
+        this.showMaterialModal = false
+        this.newMaterial = { title: '', description: '', file: null }
+      } catch (error) {
+        console.error('Ошибка при добавлении материала:', error)
+        alert('Не удалось добавить материал')
       }
     },
-    refreshStats() {
-      // Здесь будет логика обновления статистики
-      console.log('Обновление статистики')
-    },
-    getLessonIcon(type) {
-      const icons = {
-        video: 'fas fa-video',
-        task: 'fas fa-tasks',
-        quiz: 'fas fa-question-circle',
-        file: 'fas fa-file-alt'
+    async deleteMaterial(materialId) {
+      if (!confirm('Вы уверены, что хотите удалить этот материал?')) {
+        return
       }
-      return icons[type] || 'fas fa-file'
-    },
-    selectContentType(type) {
-      this.selectedContentType = type.id
-      // Сброс формы при смене типа контента
-      this.newContent = {
-        title: '',
-        description: '',
-        videoUrl: '',
-        criteria: '',
-        timeLimit: null,
+
+      try {
+        const response = await fetch(`http://localhost:8080/api/courses/${this.course.id}/materials/${materialId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        })
+
+        if (!response.ok) {
+          throw new Error('Ошибка при удалении материала')
+        }
+
+        this.course.materials = this.course.materials.filter(m => m.id !== materialId)
+      } catch (error) {
+        console.error('Ошибка при удалении материала:', error)
+        alert('Не удалось удалить материал')
       }
-      this.selectedFiles = []
     },
     handleFileUpload(event) {
       const files = Array.from(event.target.files)
-      this.selectedFiles.push(...files)
+      this.newMaterial.file = files[0]
     },
-    removeFile(index) {
-      this.selectedFiles.splice(index, 1)
+    refreshStats() {
+      // Реализация обновления статистики
+      console.log('Обновление статистики курса')
     },
-    formatFileSize(bytes) {
-      if (bytes === 0) return '0 Bytes'
-      const k = 1024
-      const sizes = ['Bytes', 'KB', 'MB', 'GB']
-      const i = Math.floor(Math.log(bytes) / Math.log(k))
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-    },
-    saveContent() {
-      const content = {
-        type: this.selectedContentType,
-        ...this.newContent
-      }
-      
-      if (this.selectedContentType === 'file') {
-        content.files = this.selectedFiles
-      }
-      
-      console.log('Сохранение контента:', content)
-      
-      // Сброс формы
-      this.selectedContentType = null
-      this.newContent = {
-        title: '',
-        description: '',
-        videoUrl: '',
-        criteria: '',
-        timeLimit: null,
-      }
-      this.selectedFiles = []
-      this.showAddContentModal = false
-    },
-    saveLesson() {
-      if (!this.editingLesson || !this.currentModuleId) return
-
-      const module = this.course.modules.find(m => m.id === this.currentModuleId)
-      if (module) {
-        const lessonIndex = module.lessons.findIndex(l => l.id === this.editingLesson.id)
-        if (lessonIndex !== -1) {
-          module.lessons[lessonIndex] = { ...this.editingLesson }
-        }
-      }
-
-      this.showEditLessonModal = false
-      this.editingLesson = null
-      this.currentModuleId = null
-    }
   }
 })
 </script>
@@ -772,21 +556,21 @@ export default defineComponent({
   transform: translateY(-2px);
 }
 
-.module-item {
+.material-item {
   background: #f8f9fa;
   border-radius: var(--border-radius);
   margin-bottom: 1rem;
   padding: 1rem;
 }
 
-.module-header {
+.material-header {
   display: flex;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.module-title-input {
+.material-title-input {
   flex: 1;
   border: none;
   background: transparent;
@@ -794,39 +578,27 @@ export default defineComponent({
   padding: 0.25rem;
 }
 
-.module-title-input:focus {
+.material-title-input:focus {
   outline: none;
   background: white;
   border-radius: var(--border-radius);
 }
 
-.lesson-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: white;
+.material-description-input {
+  width: 100%;
+  min-height: 100px;
+  border: 1px solid #dee2e6;
   border-radius: var(--border-radius);
-  margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  resize: vertical;
 }
 
-.lesson-content {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.handle {
-  cursor: move;
-  color: #adb5bd;
-}
-
-.lesson-actions {
+.material-actions {
   display: flex;
   gap: 0.5rem;
 }
 
-.lesson-actions button {
+.material-actions button {
   background: none;
   border: none;
   color: #6c757d;
@@ -834,7 +606,7 @@ export default defineComponent({
   transition: var(--transition);
 }
 
-.lesson-actions button:hover {
+.material-actions button:hover {
   color: var(--primary-color);
 }
 
@@ -1017,61 +789,6 @@ export default defineComponent({
 
 .modal-body {
   padding: 2rem;
-}
-
-.content-types {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.content-type-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem 1rem;
-  border: 2px solid #edf2f7;
-  border-radius: 12px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.content-type-btn:hover {
-  border-color: var(--primary-color);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.content-type-btn.active {
-  border-color: var(--primary-color);
-  background: linear-gradient(to bottom right, rgba(var(--primary-color-rgb), 0.05), rgba(var(--primary-color-rgb), 0.1));
-}
-
-.content-type-btn i {
-  font-size: 2rem;
-  color: var(--primary-color);
-  transition: all 0.3s ease;
-}
-
-.content-type-btn span {
-  font-weight: 500;
-  color: #4a5568;
-  font-size: 0.95rem;
-}
-
-.content-type-btn:hover i {
-  transform: scale(1.1);
-}
-
-.content-section {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 1px solid #edf2f7;
 }
 
 .form-group {
@@ -1282,5 +999,29 @@ textarea.form-input {
 
 .back-btn i {
   font-size: 1rem;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #48bb78;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease forwards;
+  z-index: 1000;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 </style> 

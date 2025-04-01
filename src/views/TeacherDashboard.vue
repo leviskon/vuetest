@@ -56,7 +56,7 @@
             <div class="section-header">
               <h2>Мои курсы</h2>
               <div class="section-actions">
-                <button class="action-btn" @click="refreshCourses">
+                <button class="action-btn" @click="refreshCourses" :disabled="isLoading">
                   <i class="fas fa-sync"></i>
                 </button>
                 <button class="action-btn" @click="toggleView">
@@ -64,7 +64,28 @@
                 </button>
               </div>
             </div>
-            <CoursesList :courses="courses" :view-mode="viewMode" />
+            
+            <div v-if="isLoading" class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Загрузка курсов...</p>
+            </div>
+            
+            <div v-else-if="error" class="error-state">
+              <i class="fas fa-exclamation-circle"></i>
+              <p>{{ error }}</p>
+            </div>
+            
+            <div v-else-if="courses.length === 0" class="empty-state">
+              <i class="fas fa-book"></i>
+              <p>У вас пока нет созданных курсов</p>
+            </div>
+            
+            <CoursesList 
+              v-else 
+              :courses="courses" 
+              :view-mode="viewMode"
+              @course-deleted="handleCourseDeleted" 
+            />
           </div>
 
           <div class="content-section">
@@ -118,53 +139,80 @@ export default {
       courses: [],
       pendingAssignments: [],
       viewMode: 'grid',
-      showCreateCourseModal: false
+      showCreateCourseModal: false,
+      isLoading: false,
+      error: null
     }
   },
   methods: {
     async loadDashboardData() {
       try {
-        // Здесь будет запрос к API
-        // Временные данные для демонстрации
-        this.stats = {
-          activeCourses: 5,
-          totalStudents: 120,
-          pendingAssignments: 8,
-          averageRating: 4.8
+        this.isLoading = true;
+        const response = await fetch('http://localhost:8080/api/courses/my-courses', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            this.$router.push('/auth');
+            return;
+          }
+          if (response.status === 403) {
+            throw new Error('У вас нет доступа к этой странице');
+          }
+          throw new Error('Ошибка при загрузке данных');
         }
+
+        const data = await response.json();
+        console.log('Данные курсов с сервера:', data);
+
+        this.courses = data.map(course => {
+          console.log('Обработка курса:', course);
+          const imageUrl = course.imageUrl 
+            ? `http://localhost:8080/${course.imageUrl.replace(/^\/+/, '')}` 
+            : null;
+          console.log('URL изображения:', imageUrl);
+          
+          return {
+            id: course.id,
+            title: course.name,
+            description: course.description,
+            students: course.totalStudents || 0,
+            progress: 0,
+            rating: 0,
+            image: imageUrl,
+            level: course.level,
+            category: course.category,
+            isPublished: course.isPublished,
+            createdAt: course.createdAt,
+            updatedAt: course.updatedAt,
+            userId: course.userId,
+            userName: course.userName
+          };
+        });
         
-        this.courses = [
-          {
-            id: 1,
-            title: 'Веб-разработка',
-            description: 'Курс по основам веб-разработки',
-            students: 45,
-            progress: 75,
-            rating: 4.9,
-            image: '/images/course1.jpg'
-          }
-        ]
+        this.stats = {
+          activeCourses: this.courses.length,
+          totalStudents: this.courses.reduce((sum, course) => sum + course.students, 0),
+          pendingAssignments: 0,
+          averageRating: 0
+        };
         
-        this.pendingAssignments = [
-          {
-            id: 1,
-            courseTitle: 'Веб-разработка',
-            studentName: 'Иван Иванов',
-            assignmentTitle: 'Создание веб-страницы',
-            submittedAt: '2024-02-20T10:30:00',
-            status: 'pending'
-          },
-          {
-            id: 2,
-            courseTitle: 'Веб-разработка',
-            studentName: 'Мария Петрова',
-            assignmentTitle: 'Стилизация страницы',
-            submittedAt: '2024-02-19T15:45:00',
-            status: 'pending'
-          }
-        ]
+        this.pendingAssignments = [];
+        this.isLoading = false;
       } catch (error) {
-        console.error('Ошибка при загрузке данных:', error)
+        console.error('Ошибка при загрузке данных:', error);
+        this.isLoading = false;
+        if (error.message === 'Failed to fetch') {
+          this.error = 'Не удалось подключиться к серверу. Убедитесь, что сервер запущен на порту 8080.';
+        } else {
+          this.error = error.message;
+        }
       }
     },
     toggleView() {
@@ -181,6 +229,11 @@ export default {
       console.log('Создание курса:', courseData)
       this.showCreateCourseModal = false
       this.refreshCourses()
+    },
+    handleCourseDeleted(courseId) {
+      this.courses = this.courses.filter(course => course.id !== courseId)
+      this.stats.activeCourses = this.courses.length
+      this.stats.totalStudents = this.courses.reduce((sum, course) => sum + course.students, 0)
     }
   },
   mounted() {
@@ -456,5 +509,48 @@ export default {
     width: 100%;
     justify-content: flex-end;
   }
+}
+
+.loading-state,
+.error-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  text-align: center;
+}
+
+.loading-state i,
+.error-state i,
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+.error-state i {
+  color: #dc3545;
+}
+
+.empty-state i {
+  color: #6c757d;
+}
+
+.loading-state p,
+.error-state p,
+.empty-state p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 1.1rem;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style> 

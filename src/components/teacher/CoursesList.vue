@@ -3,7 +3,12 @@
     <div v-if="viewMode === 'grid'" class="courses-grid">
       <div v-for="course in courses" :key="course.id" class="course-card">
         <div class="course-image">
-          <img :src="course.image" :alt="course.title">
+          <img 
+            :src="course.image" 
+            :alt="course.title"
+            crossorigin="use-credentials"
+            @error="handleImageError"
+          >
           <div class="course-overlay">
             <button class="edit-btn" @click="editCourse(course)">
               <i class="fas fa-edit"></i>
@@ -85,20 +90,50 @@ export default defineComponent({
       default: 'grid'
     }
   },
-  setup() {
+  setup(props, { emit }) {
     const router = useRouter()
 
-    const editCourse = (course) => {
-      router.push(`/teacher/courses/${course.id}/edit`)
+    const handleImageError = (event) => {
+      console.error('Ошибка загрузки изображения:', event.target.src);
     }
 
-    const deleteCourse = (course) => {
-      // Implement delete logic here
+    const editCourse = (course) => {
+      router.push({
+        name: 'EditCourse',
+        params: { id: course.id }
+      })
+    }
+
+    const deleteCourse = async (course) => {
+      if (!confirm('Вы уверены, что хотите удалить этот курс?')) {
+        return
+      }
+
+      try {
+        const response = await fetch(`http://localhost:8080/api/courses/${course.id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Ошибка при удалении курса')
+        }
+
+        emit('course-deleted', course.id)
+      } catch (error) {
+        console.error('Ошибка при удалении курса:', error)
+        alert('Не удалось удалить курс. Пожалуйста, попробуйте позже.')
+      }
     }
 
     return {
       editCourse,
-      deleteCourse
+      deleteCourse,
+      handleImageError
     }
   }
 })

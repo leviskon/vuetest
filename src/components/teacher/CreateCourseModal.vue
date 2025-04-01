@@ -114,25 +114,32 @@ export default {
     async handleSubmit() {
       try {
         this.isLoading = true
+        const formData = new FormData()
+        formData.append('name', this.form.title)
+        formData.append('description', this.form.description)
+        formData.append('level', this.form.level)
+        formData.append('category', this.form.category)
         
-        // Подготавливаем данные для отправки
-        const courseData = {
-          name: this.form.title,
-          description: this.form.description,
-          level: this.form.level,
-          category: this.form.category,
-          imageFile: this.form.image
+        if (this.form.image) {
+          formData.append('imageFile', this.form.image)
         }
 
-        // Отправляем запрос на создание курса
-        const createdCourse = await courseService.createCourse(courseData)
-        
-        // Закрываем модальное окно и уведомляем родительский компонент
-        this.$emit('course-created', createdCourse)
+        const response = await fetch('http://localhost:8080/api/courses', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Ошибка при создании курса')
+        }
+
+        const data = await response.json()
+        this.$emit('create', data)
         this.closeModal()
       } catch (error) {
         console.error('Ошибка при создании курса:', error)
-        alert(error.message || 'Произошла ошибка при создании курса')
+        alert('Не удалось создать курс. Пожалуйста, попробуйте позже.')
       } finally {
         this.isLoading = false
       }
