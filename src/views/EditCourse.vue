@@ -30,10 +30,6 @@
             <i class="fas fa-save"></i>
             Сохранить изменения
           </button>
-          <button class="preview-btn" @click="previewCourse">
-            <i class="fas fa-eye"></i>
-            Предпросмотр
-          </button>
         </div>
       </div>
 
@@ -159,15 +155,32 @@
               ></textarea>
             </div>
             <div class="form-group">
-            <label>Файл материала</label>
+              <label>Файл материала</label>
+              <div class="file-upload-area" @click="$refs.fileInput.click()" @drop.prevent="handleFileDrop" @dragover.prevent>
                 <input 
                   type="file" 
                   ref="fileInput" 
                   @change="handleFileUpload" 
                   class="file-input"
+                  style="display: none"
                 >
+                <div class="file-upload-content">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <p>Перетащите файл сюда или нажмите для выбора</p>
+                  <span class="file-types">Поддерживаемые форматы: PDF, DOC, DOCX, PPT, PPTX, MP4</span>
                 </div>
               </div>
+              <div v-if="newMaterial.file" class="selected-file">
+                <div class="file-info">
+                  <i class="fas fa-file"></i>
+                  <span>{{ newMaterial.file.name }}</span>
+                </div>
+                <button class="remove-file" @click="removeFile">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+        </div>
         <div v-if="newMaterial.file" class="modal-footer">
           <button class="cancel-btn" @click="showMaterialModal = false">Отмена</button>
           <button class="save-btn" @click="addMaterial">
@@ -327,10 +340,6 @@ export default defineComponent({
         this.loading = false
       }
     },
-    previewCourse() {
-      // Реализация предпросмотра курса
-      console.log('Предпросмотр курса:', this.course)
-    },
     async addMaterial() {
       if (!this.newMaterial.title || !this.newMaterial.file) {
         alert('Пожалуйста, заполните все поля')
@@ -386,6 +395,13 @@ export default defineComponent({
     handleFileUpload(event) {
       const files = Array.from(event.target.files)
       this.newMaterial.file = files[0]
+    },
+    handleFileDrop(event) {
+      const files = Array.from(event.dataTransfer.files)
+      this.newMaterial.file = files[0]
+    },
+    removeFile() {
+      this.newMaterial.file = null
     },
     refreshStats() {
       // Реализация обновления статистики
@@ -453,8 +469,7 @@ export default defineComponent({
   gap: 1rem;
 }
 
-.save-btn,
-.preview-btn {
+.save-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -474,15 +489,6 @@ export default defineComponent({
 .save-btn:hover {
   background: var(--accent-color);
   transform: translateY(-2px);
-}
-
-.preview-btn {
-  background: #f8f9fa;
-  color: var(--text-color);
-}
-
-.preview-btn:hover {
-  background: #e9ecef;
 }
 
 .course-content {
@@ -508,6 +514,7 @@ export default defineComponent({
   flex-direction: column;
   gap: 0.5rem;
   position: relative;
+  padding-right: 4rem;
 }
 
 .panel-header h2 {
@@ -713,22 +720,24 @@ export default defineComponent({
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
 }
 
 .modal-content {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   width: 90%;
-  max-width: 700px;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  transform: translateY(0);
+  transition: transform 0.3s ease;
 }
 
 .modal-header {
@@ -738,7 +747,8 @@ export default defineComponent({
   flex-direction: column;
   align-items: center;
   position: relative;
-  background: linear-gradient(to right, #f8f9fa, #ffffff);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 20px 20px 0 0;
 }
 
 .modal-header h2 {
@@ -747,8 +757,9 @@ export default defineComponent({
   position: relative;
   display: inline-block;
   text-align: center;
-  font-size: 1.5rem;
-  color: #2d3748;
+  font-size: 1.75rem;
+  color: #1a202c;
+  font-weight: 700;
 }
 
 .modal-header h2::after {
@@ -757,66 +768,44 @@ export default defineComponent({
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(to right, var(--primary-color), var(--accent-color));
-  border-radius: 3px;
-}
-
-.modal-header .close-btn {
-  position: absolute;
-  right: 1.5rem;
-  top: 1.5rem;
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  color: #718096;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-header .close-btn:hover {
-  background: #f7fafc;
-  color: #e53e3e;
-  transform: rotate(90deg);
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  border-radius: 2px;
 }
 
 .modal-body {
   padding: 2rem;
+  background: #ffffff;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   font-weight: 600;
   color: #2d3748;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .form-input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 2px solid #edf2f7;
-  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
   background: white;
+  color: #2d3748;
 }
 
 .form-input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+  box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
 }
 
 .form-input::placeholder {
@@ -824,47 +813,46 @@ export default defineComponent({
 }
 
 textarea.form-input {
-  min-height: 120px;
+  min-height: 150px;
   resize: vertical;
-  line-height: 1.5;
-}
-
-.file-upload-section {
-  margin-top: 1.5rem;
+  line-height: 1.6;
 }
 
 .file-upload-area {
+  width: 100%;
+  padding: 2.5rem;
   border: 2px dashed #cbd5e0;
   border-radius: 12px;
-  padding: 2.5rem 2rem;
-  text-align: center;
-  position: relative;
+  background: #f8fafc;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.5rem;
 }
 
 .file-upload-area:hover {
   border-color: var(--primary-color);
   background: rgba(var(--primary-color-rgb), 0.02);
+  transform: translateY(-2px);
 }
 
-.file-upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.file-upload-placeholder i {
-  font-size: 3rem;
-  color: var(--primary-color);
-  margin-bottom: 0.5rem;
-}
-
-.file-upload-placeholder p {
-  font-size: 1.1rem;
+.file-upload-content {
+  text-align: center;
   color: #4a5568;
+}
+
+.file-upload-content i {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.file-upload-content p {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
 }
 
 .file-types {
@@ -872,62 +860,56 @@ textarea.form-input {
   color: #718096;
 }
 
-.selected-files {
-  margin-top: 1.5rem;
-}
-
-.selected-files h3 {
-  margin-bottom: 1rem;
-  font-size: 1rem;
-  color: #2d3748;
-}
-
-.file-item {
+.selected-file {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
   padding: 0.75rem 1rem;
-  background: white;
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-  border: 1px solid #edf2f7;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-top: 1rem;
   transition: all 0.3s ease;
 }
 
-.file-item:hover {
-  border-color: #cbd5e0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.selected-file:hover {
+  border-color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.02);
 }
 
-.file-name {
-  flex: 1;
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.file-info i {
+  font-size: 1.25rem;
+  color: var(--primary-color);
+}
+
+.file-info span {
   font-size: 0.95rem;
   color: #2d3748;
 }
 
-.file-size {
-  color: #718096;
-  font-size: 0.875rem;
-}
-
-.remove-file-btn {
+.remove-file {
   background: none;
   border: none;
-  color: #e53e3e;
+  color: #718096;
   cursor: pointer;
-  padding: 0.25rem;
-  transition: all 0.3s ease;
+  padding: 0.5rem;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.remove-file-btn:hover {
-  background: #fff5f5;
-  color: #c53030;
+.remove-file:hover {
+  background: #edf2f7;
+  color: #e53e3e;
+  transform: rotate(90deg);
 }
 
 .modal-footer {
@@ -936,45 +918,72 @@ textarea.form-input {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  background: #f8f9fa;
-  border-bottom-left-radius: 16px;
-  border-bottom-right-radius: 16px;
+  background: #f8fafc;
+  border-radius: 0 0 20px 20px;
 }
 
 .save-btn {
-  padding: 0.75rem 2rem;
-  background: var(--primary-color);
+  padding: 0.875rem 2.5rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.save-btn:hover {
-  background: var(--accent-color);
-  transform: translateY(-1px);
+  gap: 0.75rem;
+  font-size: 1rem;
   box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
 }
 
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(var(--primary-color-rgb), 0.3);
+}
+
 .cancel-btn {
-  padding: 0.75rem 2rem;
-  border: 2px solid #edf2f7;
-  border-radius: 8px;
+  padding: 0.875rem 2.5rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   background: white;
   color: #4a5568;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 1rem;
 }
 
 .cancel-btn:hover {
   background: #f7fafc;
   border-color: #cbd5e0;
+  transform: translateY(-2px);
+}
+
+.close-btn {
+  position: absolute;
+  right: 1.5rem;
+  top: 1.5rem;
+  background: #f7fafc;
+  border: none;
+  font-size: 1.25rem;
+  color: #718096;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.close-btn:hover {
+  background: #edf2f7;
+  color: #e53e3e;
+  transform: rotate(90deg) scale(1.1);
 }
 
 .back-btn {
@@ -1023,5 +1032,44 @@ textarea.form-input {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+.refresh-btn {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #4a5568;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.refresh-btn i {
+  font-size: 1.1rem;
+  transition: transform 0.3s ease;
+}
+
+.refresh-btn:hover {
+  background: #edf2f7;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.refresh-btn:hover i {
+  transform: rotate(180deg);
+}
+
+.refresh-btn:active {
+  transform: translateY(-50%) scale(0.95);
 }
 </style> 
