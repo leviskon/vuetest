@@ -9,7 +9,6 @@
         </div>
         <nav class="header__nav" :class="{ active: isMenuOpen }">
           <ul>
-            <li><a href="#courses">Курсы</a></li>
             <li><a href="#features">Преимущества</a></li>
             <li><a href="#how-it-works">Как это работает</a></li>
             <li><a href="#contacts">Контакты</a></li>
@@ -56,13 +55,6 @@
               </div>
               <h3>Опытные преподаватели</h3>
               <p>Занятия ведут профессионалы с многолетним опытом</p>
-            </div>
-            <div class="feature-card">
-              <div class="feature-card__icon">
-                <i class="fas fa-certificate"></i>
-              </div>
-              <h3>Сертификация</h3>
-              <p>Получайте сертификаты по окончании курсов</p>
             </div>
             <div class="feature-card">
               <div class="feature-card__icon">
@@ -121,27 +113,23 @@
         <div class="container">
           <h2 class="section-title">Контакты и поддержка</h2>
           <div class="contact__grid">
-            <div class="contact__info">
-              <h3>Свяжитесь с нами</h3>
-              <div class="contact__details">
-                <div class="contact__item">
-                  <i class="fas fa-envelope"></i>
-                  <p>Email: info@example.com</p>
-                </div>
-                <div class="contact__item">
-                  <i class="fas fa-phone"></i>
-                  <p>Телефон: +7 (999) 123-45-67</p>
-                </div>
-                <div class="contact__item">
-                  <i class="fas fa-clock"></i>
-                  <p>Время работы: 24/7</p>
-                </div>
+            <div class="contact__item">
+              <div class="contact__item-icon">
+                <i class="fas fa-envelope"></i>
               </div>
-              <div class="social-links">
-                <a href="#" class="social-link"><i class="fab fa-telegram"></i></a>
-                <a href="#" class="social-link"><i class="fab fa-vk"></i></a>
-                <a href="#" class="social-link"><i class="fab fa-youtube"></i></a>
+              <p>Email: info@example.com</p>
+            </div>
+            <div class="contact__item">
+              <div class="contact__item-icon">
+                <i class="fas fa-phone"></i>
               </div>
+              <p>Телефон: +7 (999) 123-45-67</p>
+            </div>
+            <div class="contact__item">
+              <div class="contact__item-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <p>Время работы: 24/7</p>
             </div>
           </div>
         </div>
@@ -151,6 +139,10 @@
     <footer class="footer">
       <div class="container">
         <div class="footer__content">
+          <div>
+            <h3>SkillUp</h3>
+            <p>Универсальная система обучения для современных образовательных учреждений</p>
+          </div>
           <div>
             <h3>О нас</h3>
             <p>Мы предоставляем качественное онлайн-образование</p>
@@ -162,7 +154,7 @@
           </div>
         </div>
         <div class="footer__bottom">
-          <p>&copy; 2024 Образовательная платформа. Все права защищены.</p>
+          <p>&copy; 2024 SkillUp. Все права защищены.</p>
         </div>
       </div>
     </footer>
@@ -390,7 +382,7 @@ export default {
 /* Features Section */
 .features {
   padding: 5rem 0;
-  background: #f8f9fa;
+  background: transparent;
 }
 
 .section-title {
@@ -429,6 +421,46 @@ export default {
 /* How It Works Section */
 .how-it-works {
   padding: 5rem 0;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+}
+
+.how-it-works::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 0;
+  clip-path: polygon(0 15%, 100% 0, 100% 85%, 0 100%);
+  opacity: 1;
+}
+
+.how-it-works::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 0;
+  clip-path: polygon(0 15%, 100% 0, 100% 85%, 0 100%);
+}
+
+.how-it-works .container {
+  position: relative;
+  z-index: 1;
+  color: white;
+}
+
+.how-it-works .section-title,
+.how-it-works .step h3,
+.how-it-works .step p {
+  color: white;
 }
 
 .steps {
@@ -446,7 +478,7 @@ export default {
 .step__number {
   width: 40px;
   height: 40px;
-  background: var(--primary-color);
+  background: rgba(255, 255, 255, 0.2);
   color: white;
   border-radius: 50%;
   display: flex;
@@ -458,93 +490,130 @@ export default {
 
 .step__icon {
   font-size: 2.5rem;
-  color: var(--primary-color);
+  color: white;
   margin-bottom: 1rem;
 }
 
 /* Contact Section */
 .contact {
   padding: 5rem 0;
-  background: #f8f9fa;
+  position: relative;
+  background: transparent;
+}
+
+.contact .container {
+  position: relative;
+  z-index: 1;
+}
+
+.contact .section-title {
+  color: var(--text-color);
+  text-align: center;
+  margin-bottom: 3rem;
 }
 
 .contact__grid {
-  display: flex;
-  justify-content: center;
-  padding: 0 2rem;
-}
-
-.contact__info {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
-  max-width: 500px;
-  text-align: center;
-}
-
-.contact__details {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  padding: 0 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .contact__item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  font-size: 1.1rem;
+  background: white;
+  padding: 2rem;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
 }
 
-.contact__item i {
-  font-size: 1.5rem;
+.contact__item:hover {
+  transform: translateY(-5px);
+}
+
+.contact__item-icon {
+  font-size: 2.5rem;
   color: var(--primary-color);
+  margin-bottom: 1rem;
 }
 
-.social-links {
-  display: flex;
-  justify-content: center;
-  gap: 1.5rem;
+.contact__item p {
+  color: var(--text-color);
   margin-top: 1rem;
 }
 
-.social-link {
-  width: 45px;
-  height: 45px;
-  background: var(--primary-color);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  transition: all 0.3s ease;
-}
-
-.social-link:hover {
-  transform: translateY(-3px);
-  background: var(--primary-color-dark);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+.social-links {
+  display: none;
 }
 
 /* Footer */
 .footer {
-  background: #2c3e50;
+  position: relative;
+  background: transparent;
   color: white;
-  padding: 3rem 0 1rem;
+  padding: 4rem 0 2rem;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 0;
+  border-radius: 0;
+}
+
+.footer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 0;
+  border-radius: 0;
 }
 
 .footer__content {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 2rem;
   margin-bottom: 2rem;
 }
 
+.footer__content h3 {
+  color: white;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.footer__content p {
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
 .footer__bottom {
+  position: relative;
+  z-index: 1;
   text-align: center;
   padding-top: 2rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer__bottom p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
 }
 
 /* Animations */
@@ -626,11 +695,22 @@ export default {
   
   .contact__grid {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
   
   .features__grid,
   .steps {
     grid-template-columns: 1fr;
+  }
+
+  .footer {
+    padding: 3rem 0 2rem;
+  }
+
+  .footer__content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    text-align: center;
   }
 }
 
