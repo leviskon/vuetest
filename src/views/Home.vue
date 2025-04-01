@@ -2,6 +2,9 @@
   <div class="home">
     <header class="header">
       <div class="header__container">
+        <div class="header__logo">
+          <h1>SkillUp</h1>
+        </div>
         <div class="burger-menu" @click="toggleMenu">
           <span></span>
           <span></span>
@@ -226,6 +229,22 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header__logo {
+  display: flex;
+  align-items: center;
+}
+
+.header__logo h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
 }
 
 .header__nav ul {
@@ -638,6 +657,7 @@ export default {
 
   .header__container {
     padding: 0.3rem 1rem;
+    justify-content: space-between;
   }
 
   .burger-menu {
@@ -711,6 +731,10 @@ export default {
     grid-template-columns: 1fr;
     gap: 2rem;
     text-align: center;
+  }
+
+  .header__logo h1 {
+    font-size: 1.5rem;
   }
 }
 
