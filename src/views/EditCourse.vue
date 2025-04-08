@@ -51,24 +51,114 @@
               <div v-for="material in course.materials" :key="material.id" class="material-item">
                 <div class="material-header">
                   <i class="fas fa-grip-vertical handle"></i>
-                  <input 
-                    v-model="material.title" 
-                    class="material-title-input"
-                    placeholder="Название материала"
-                  >
+                  <div class="material-title-block">
+                    <label class="material-label">Название</label>
+                    <input 
+                      v-model="material.title" 
+                      class="material-title-input"
+                      :disabled="!editingMaterials.has(material.id)"
+                      placeholder="Название материала"
+                    >
+                  </div>
                   <div class="material-actions">
-                    <button @click="deleteMaterial(material.id)">
+                    <button 
+                      v-if="!editingMaterials.has(material.id)"
+                      @click="editMaterial(material)" 
+                      class="action-btn edit-btn" 
+                      title="Редактировать материал"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <template v-else>
+                      <button 
+                        @click="editMaterial(material)" 
+                        class="action-btn save-btn" 
+                        title="Сохранить изменения"
+                      >
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <button 
+                        @click="cancelEdit(material)" 
+                        class="action-btn cancel-btn" 
+                        title="Отменить изменения"
+                      >
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </template>
+                    <button 
+                      @click="deleteMaterial(material.id)" 
+                      class="action-btn delete-btn" 
+                      title="Удалить материал"
+                    >
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
                 </div>
 
-                <div class="material-description">
+                <div class="material-description-block">
+                  <label class="material-label">Описание</label>
                   <textarea 
                     v-model="material.description" 
                     class="material-description-input"
+                    :disabled="!editingMaterials.has(material.id)"
                     placeholder="Описание материала"
                   ></textarea>
+                </div>
+
+                <div class="material-content">
+                  <div v-if="material.typeId === 1" class="video-container">
+                    <video 
+                      v-if="material.fileUrl"
+                      :src="material.fileUrl" 
+                      controls
+                      preload="auto"
+                      class="material-video"
+                    ></video>
+                    <div v-else class="no-content">
+                      <button @click="displayMaterial(material)" class="load-btn">
+                        <i class="fas fa-play"></i>
+                        Загрузить видео
+                      </button>
+                    </div>
+                  </div>
+                  <div v-else-if="material.typeId === 2" class="document-container">
+                    <div class="document-preview">
+                      <template v-if="material.fileUrl">
+                        <div v-if="isPdfFile(material.fileName) || material.contentType === 'application/pdf'" class="pdf-viewer">
+                          <object 
+                            :data="material.fileUrl" 
+                            type="application/pdf" 
+                            class="material-document"
+                          >
+                            <p>Ваш браузер не поддерживает просмотр PDF. <a :href="material.fileUrl">Скачайте PDF</a></p>
+                          </object>
+                          <div class="document-actions">
+                            <button @click="downloadMaterial(material.id)" class="download-btn">
+                              <i class="fas fa-download"></i>
+                              Скачать PDF
+                            </button>
+                          </div>
+                        </div>
+                        <div v-else class="compact-file-preview">
+                          <div class="file-info">
+                            <i :class="getFileIcon(material)"></i>
+                            <span class="file-name">{{ material.fileName }}</span>
+                          </div>
+                          <button @click="downloadMaterial(material.id)" class="compact-download-btn">
+                            <i class="fas fa-download"></i>
+                            Скачать
+                          </button>
+                        </div>
+                      </template>
+                      <div v-else class="loading-container">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Загрузка файла...</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="no-content">
+                    <p>Неизвестный тип материала</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -155,6 +245,21 @@
               ></textarea>
             </div>
             <div class="form-group">
+              <label>Тип материала</label>
+              <select 
+                v-model="newMaterial.typeId" 
+                class="form-input"
+              >
+                <option 
+                  v-for="type in materialTypes" 
+                  :key="type.id" 
+                  :value="type.id"
+                >
+                  {{ type.name }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>Файл материала</label>
               <div class="file-upload-area" @click="$refs.fileInput.click()" @drop.prevent="handleFileDrop" @dragover.prevent>
                 <input 
@@ -194,7 +299,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, onMounted } from 'vue'
+import { defineComponent, ref, onMounted, onBeforeUnmount } from 'vue'
 import Sortable from 'sortablejs'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -205,6 +310,8 @@ export default defineComponent({
     const router = useRouter()
     const courseId = route.params.id
     const materialsList = ref(null)
+    const materialUrls = ref({})
+    const editingMaterials = ref(new Set())
 
     onMounted(() => {
       // Инициализация сортировки для материалов
@@ -220,10 +327,28 @@ export default defineComponent({
       }
     })
 
+    onBeforeUnmount(() => {
+      // Освобождаем все URL при размонтировании компонента
+      Object.values(materialUrls.value).forEach(url => {
+        URL.revokeObjectURL(url)
+      })
+    })
+
+    const toggleEdit = (materialId) => {
+      if (editingMaterials.value.has(materialId)) {
+        editingMaterials.value.delete(materialId)
+      } else {
+        editingMaterials.value.add(materialId)
+      }
+    }
+
     return {
       materialsList,
       courseId,
-      router
+      router,
+      materialUrls,
+      editingMaterials,
+      toggleEdit
     }
   },
   data() {
@@ -243,15 +368,31 @@ export default defineComponent({
         },
         students: []
       },
+      materialTypes: [
+        { id: 1, name: 'Видео', extensions: ['mp4', 'avi', 'mov', 'wmv'] },
+        { id: 2, name: 'Документ', extensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt'] }
+      ],
       newMaterial: {
         title: '',
         description: '',
-        file: null
+        file: null,
+        typeId: 1
       },
       showMaterialModal: false,
       loading: false,
       showNotification: false,
-      notificationMessage: ''
+      notificationMessage: '',
+      selectedMaterial: null,
+      mimeTypes: {
+        'pdf': 'application/pdf',
+        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'ppt': 'application/vnd.ms-powerpoint',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'doc': 'application/msword',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'xls': 'application/vnd.ms-excel'
+      },
+      editedMaterial: null,
     }
   },
   async created() {
@@ -293,6 +434,9 @@ export default defineComponent({
         },
         students: []
       }
+
+      // Загрузка материалов курса
+      await this.loadCourseMaterials()
     } catch (error) {
       console.error('Ошибка при загрузке курса:', error)
       console.error('Детали ошибки:', {
@@ -347,12 +491,14 @@ export default defineComponent({
       }
 
       const formData = new FormData()
+      formData.append('courseId', this.course.id)
+      formData.append('typeId', this.newMaterial.typeId)
       formData.append('title', this.newMaterial.title)
       formData.append('description', this.newMaterial.description)
       formData.append('file', this.newMaterial.file)
 
       try {
-        const response = await fetch(`http://localhost:8080/api/courses/${this.course.id}/materials`, {
+        const response = await fetch('http://localhost:8080/api/materials', {
           method: 'POST',
           credentials: 'include',
           body: formData
@@ -365,10 +511,56 @@ export default defineComponent({
         const material = await response.json()
         this.course.materials.push(material)
         this.showMaterialModal = false
-        this.newMaterial = { title: '', description: '', file: null }
+        this.newMaterial = { title: '', description: '', file: null, typeId: 1 }
+        
+        this.notificationMessage = 'Материал успешно добавлен'
+        this.showNotification = true
+        setTimeout(() => {
+          this.showNotification = false
+        }, 3000)
       } catch (error) {
         console.error('Ошибка при добавлении материала:', error)
-        alert('Не удалось добавить материал')
+        this.notificationMessage = 'Не удалось добавить материал'
+        this.showNotification = true
+        setTimeout(() => {
+          this.showNotification = false
+        }, 3000)
+      }
+    },
+    async updateMaterial(material) {
+      try {
+        const formData = new FormData()
+        formData.append('title', material.title)
+        formData.append('description', material.description)
+        
+        const response = await fetch(`http://localhost:8080/api/materials/${material.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Ошибка при обновлении материала')
+        }
+
+        // Обновляем материал в текущем массиве без изменения порядка
+        const index = this.course.materials.findIndex(m => m.id === material.id)
+        if (index !== -1) {
+          this.$set(this.course.materials, index, { ...this.course.materials[index], ...material })
+        }
+
+        this.notificationMessage = 'Материал успешно обновлен'
+        this.showNotification = true
+        setTimeout(() => {
+          this.showNotification = false
+        }, 3000)
+      } catch (error) {
+        console.error('Ошибка при обновлении материала:', error)
+        this.notificationMessage = 'Не удалось обновить материал'
+        this.showNotification = true
+        setTimeout(() => {
+          this.showNotification = false
+        }, 3000)
       }
     },
     async deleteMaterial(materialId) {
@@ -377,7 +569,7 @@ export default defineComponent({
       }
 
       try {
-        const response = await fetch(`http://localhost:8080/api/courses/${this.course.id}/materials/${materialId}`, {
+        const response = await fetch(`http://localhost:8080/api/materials/${materialId}`, {
           method: 'DELETE',
           credentials: 'include'
         })
@@ -387,18 +579,40 @@ export default defineComponent({
         }
 
         this.course.materials = this.course.materials.filter(m => m.id !== materialId)
+        this.notificationMessage = 'Материал успешно удален'
+        this.showNotification = true
+        setTimeout(() => {
+          this.showNotification = false
+        }, 3000)
       } catch (error) {
         console.error('Ошибка при удалении материала:', error)
-        alert('Не удалось удалить материал')
+        this.notificationMessage = 'Не удалось удалить материал'
+        this.showNotification = true
+        setTimeout(() => {
+          this.showNotification = false
+        }, 3000)
       }
     },
+    getFileType(fileName) {
+      const extension = fileName.split('.').pop().toLowerCase();
+      const type = this.materialTypes.find(type => 
+        type.extensions.includes(extension)
+      );
+      return type ? type.id : 1; // По умолчанию видео
+    },
     handleFileUpload(event) {
-      const files = Array.from(event.target.files)
-      this.newMaterial.file = files[0]
+      const files = Array.from(event.target.files);
+      if (files.length > 0) {
+        this.newMaterial.file = files[0];
+        this.newMaterial.typeId = this.getFileType(files[0].name);
+      }
     },
     handleFileDrop(event) {
-      const files = Array.from(event.dataTransfer.files)
-      this.newMaterial.file = files[0]
+      const files = Array.from(event.dataTransfer.files);
+      if (files.length > 0) {
+        this.newMaterial.file = files[0];
+        this.newMaterial.typeId = this.getFileType(files[0].name);
+      }
     },
     removeFile() {
       this.newMaterial.file = null
@@ -407,7 +621,256 @@ export default defineComponent({
       // Реализация обновления статистики
       console.log('Обновление статистики курса')
     },
-  }
+    async loadCourseMaterials() {
+      try {
+        console.log('Начало загрузки материалов для курса:', this.course.id);
+        
+        const response = await fetch(`http://localhost:8080/api/materials/course/${this.course.id}`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке материалов');
+        }
+
+        const materials = await response.json();
+        
+        // Сортируем материалы по порядку создания (по ID или дате создания)
+        materials.sort((a, b) => a.id - b.id);
+        
+        // Загружаем файлы для всех материалов
+        const materialsWithFiles = await Promise.all(materials.map(async material => {
+          try {
+            material.typeId = material.type.id;
+            
+            const fileResponse = await fetch(`http://localhost:8080/api/materials/${material.id}/file`, {
+              credentials: 'include',
+              headers: {
+                'Accept': '*/*'
+              }
+            });
+
+            if (fileResponse.ok) {
+              const contentType = fileResponse.headers.get('content-type');
+              const contentDisposition = fileResponse.headers.get('content-disposition');
+              
+              // Получаем имя файла из заголовка Content-Disposition
+              let fileName = material.title;
+              if (contentDisposition) {
+                const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/g.exec(contentDisposition);
+                if (matches && matches[1]) {
+                  fileName = matches[1].replace(/['"]/g, '');
+                }
+              }
+
+              // Если в имени файла нет расширения, добавляем его на основе типа контента
+              if (!fileName.includes('.')) {
+                const ext = Object.entries(this.mimeTypes).find(([_, mime]) => mime === contentType)?.[0];
+                if (ext) {
+                  fileName += '.' + ext;
+                }
+              }
+              
+              material.fileName = fileName;
+              material.contentType = contentType;
+              
+              const blob = await fileResponse.blob();
+              const fileUrl = URL.createObjectURL(blob);
+              material.fileUrl = fileUrl;
+              this.materialUrls[material.id] = fileUrl;
+
+              console.log('Загружен файл:', {
+                id: material.id,
+                fileName: material.fileName,
+                contentType: material.contentType
+              });
+            }
+          } catch (error) {
+            console.error(`Ошибка при загрузке файла для материала ${material.id}:`, error);
+          }
+          return material;
+        }));
+
+        this.course.materials = materialsWithFiles;
+      } catch (error) {
+        console.error('Ошибка при загрузке материалов:', error);
+        this.notificationMessage = 'Не удалось загрузить материалы курса';
+        this.showNotification = true;
+        setTimeout(() => {
+          this.showNotification = false;
+        }, 3000);
+      }
+    },
+    async loadMaterialDetails(materialId) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/materials/${materialId}`, {
+          credentials: 'include'
+        })
+
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке материала')
+        }
+
+        const material = await response.json()
+        // Обновляем данные материала в списке
+        const index = this.course.materials.findIndex(m => m.id === materialId)
+        if (index !== -1) {
+          this.course.materials[index] = material
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке деталей материала:', error)
+        this.notificationMessage = 'Не удалось загрузить детали материала'
+        this.showNotification = true
+        setTimeout(() => {
+          this.showNotification = false
+        }, 3000)
+      }
+    },
+    async downloadMaterial(materialId) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/materials/${materialId}/file`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке файла');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = this.course.materials.find(m => m.id === materialId)?.title || 'material';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        this.notificationMessage = 'Файл успешно загружен';
+        this.showNotification = true;
+        setTimeout(() => {
+          this.showNotification = false;
+        }, 3000);
+      } catch (error) {
+        console.error('Ошибка при загрузке файла:', error);
+        this.notificationMessage = 'Не удалось загрузить файл';
+        this.showNotification = true;
+        setTimeout(() => {
+          this.showNotification = false;
+        }, 3000);
+      }
+    },
+    async displayMaterial(material) {
+      try {
+        console.log('Начало загрузки файла для материала:', material);
+        
+        // Очищаем старый URL, если он есть
+        if (this.materialUrls[material.id]) {
+          URL.revokeObjectURL(this.materialUrls[material.id]);
+        }
+
+        // Загружаем файл через API
+        const response = await fetch(`http://localhost:8080/api/materials/${material.id}/file`, {
+          credentials: 'include',
+          headers: {
+            'Accept': '*/*'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке файла');
+        }
+
+        const contentType = response.headers.get('content-type');
+        const contentDisposition = response.headers.get('content-disposition');
+        console.log('Заголовки ответа:', { contentType, contentDisposition });
+
+        const blob = await response.blob();
+        const fileUrl = URL.createObjectURL(blob);
+        material.fileUrl = fileUrl;
+        material.fileName = material.title;
+        material.contentType = contentType;
+        this.materialUrls[material.id] = fileUrl;
+        
+        console.log('Создан URL для файла:', fileUrl, 'Имя файла:', material.fileName, 'Content-Type:', contentType);
+        
+        // Обновляем материал с URL файла
+        const index = this.course.materials.findIndex(m => m.id === material.id);
+        if (index !== -1) {
+          this.course.materials[index] = { ...material };
+          console.log('Обновлен материал с новым URL:', this.course.materials[index]);
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке файла:', error);
+        this.notificationMessage = 'Не удалось загрузить файл материала';
+        this.showNotification = true;
+        setTimeout(() => {
+          this.showNotification = false;
+        }, 3000);
+      }
+    },
+    canDisplayInBrowser(fileName) {
+      if (!fileName) return false;
+      console.log('Проверка файла для отображения:', fileName);
+      const displayableExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.gif'];
+      const extension = '.' + fileName.toLowerCase().split('.').pop();
+      const canDisplay = displayableExtensions.includes(extension);
+      console.log('Расширение файла:', extension, 'Можно отобразить:', canDisplay);
+      return canDisplay;
+    },
+    getFileIcon(material) {
+      if (!material || !material.fileName) return 'fas fa-file';
+      
+      const extension = material.fileName.toLowerCase().split('.').pop();
+      
+      const iconMap = {
+        'pdf': 'fas fa-file-pdf',
+        'doc': 'fas fa-file-word',
+        'docx': 'fas fa-file-word',
+        'xls': 'fas fa-file-excel',
+        'xlsx': 'fas fa-file-excel',
+        'ppt': 'fas fa-file-powerpoint',
+        'pptx': 'fas fa-file-powerpoint',
+        'jpg': 'fas fa-file-image',
+        'jpeg': 'fas fa-file-image',
+        'png': 'fas fa-file-image',
+        'gif': 'fas fa-file-image',
+        'mp4': 'fas fa-file-video',
+        'avi': 'fas fa-file-video',
+        'mov': 'fas fa-file-video',
+        'mp3': 'fas fa-file-audio',
+        'wav': 'fas fa-file-audio',
+        'zip': 'fas fa-file-archive',
+        'rar': 'fas fa-file-archive',
+        'html': 'fas fa-file-code',
+        'css': 'fas fa-file-code',
+        'js': 'fas fa-file-code'
+      };
+
+      return iconMap[extension] || 'fas fa-file';
+    },
+    isPdfFile(fileName) {
+      if (!fileName) return false;
+      return fileName.toLowerCase().endsWith('.pdf');
+    },
+    editMaterial(material) {
+      this.toggleEdit(material.id)
+      if (this.editingMaterials.has(material.id)) {
+        // Сохраняем копию для возможной отмены изменений
+        this.editedMaterial = { ...material }
+      } else {
+        // Сохраняем изменения
+        this.updateMaterial(material)
+      }
+    },
+    cancelEdit(material) {
+      if (this.editedMaterial) {
+        Object.assign(material, this.editedMaterial)
+      }
+      this.toggleEdit(material.id)
+      this.editedMaterial = null
+    },
+  },
 })
 </script>
 
@@ -564,9 +1027,10 @@ export default defineComponent({
 }
 
 .material-item {
-  background: #f8f9fa;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: var(--border-radius);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   padding: 1rem;
 }
 
@@ -577,44 +1041,101 @@ export default defineComponent({
   margin-bottom: 1rem;
 }
 
-.material-title-input {
-  flex: 1;
-  border: none;
-  background: transparent;
+.material-title-block, .material-description-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.material-label {
+  font-size: 0.875rem;
   font-weight: 600;
-  padding: 0.25rem;
+  color: #4a5568;
+}
+
+.material-title-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
+  transition: all 0.2s;
 }
 
 .material-title-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
   outline: none;
-  background: white;
-  border-radius: var(--border-radius);
+}
+
+.material-title-input:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+  opacity: 0.8;
+  border-color: #e2e8f0;
 }
 
 .material-description-input {
   width: 100%;
-  min-height: 100px;
-  border: 1px solid #dee2e6;
-  border-radius: var(--border-radius);
+  min-height: 80px;
   padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
   resize: vertical;
+  transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+
+.material-description-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+  outline: none;
+}
+
+.material-description-input:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+  opacity: 0.8;
+  border-color: #e2e8f0;
 }
 
 .material-actions {
   display: flex;
   gap: 0.5rem;
+  margin-left: auto;
 }
 
-.material-actions button {
-  background: none;
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: none;
-  color: #6c757d;
+  border-radius: var(--border-radius);
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s;
+  background: #f8f9fa;
 }
 
-.material-actions button:hover {
+.edit-btn {
+  color: #4a5568;
+}
+
+.edit-btn:hover {
+  background: #edf2f7;
   color: var(--primary-color);
+}
+
+.delete-btn {
+  color: #4a5568;
+}
+
+.delete-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .stats-cards {
@@ -734,10 +1255,11 @@ export default defineComponent({
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
-  overflow-y: auto;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   transform: translateY(0);
   transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
@@ -777,6 +1299,27 @@ export default defineComponent({
 .modal-body {
   padding: 2rem;
   background: #ffffff;
+  overflow-y: auto;
+  flex: 1;
+  border-radius: 0 0 20px 20px;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }
 
 .form-group {
@@ -1071,5 +1614,365 @@ textarea.form-input {
 
 .refresh-btn:active {
   transform: translateY(-50%) scale(0.95);
+}
+
+.material-content {
+  margin: 0;
+  padding: 0;
+}
+
+.video-container {
+  width: 100%;
+  background: #000;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.material-video {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+}
+
+.document-container {
+  margin: 0;
+  padding: 0;
+}
+
+.document-preview {
+  margin: 0;
+  padding: 0;
+}
+
+.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.material-document {
+  width: 100%;
+  height: 700px;
+  border: none;
+  background: #fff;
+  display: block;
+}
+
+.document-actions {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-top: 1px solid #e2e8f0;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.download-btn:hover {
+  background: var(--accent-color);
+  transform: translateY(-2px);
+}
+
+.download-btn i {
+  font-size: 1.1rem;
+}
+
+.no-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background: #f8f9fa;
+  color: #6c757d;
+  border-radius: var(--border-radius);
+  font-size: 1.1rem;
+}
+
+.load-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.load-btn:hover {
+  background: var(--accent-color);
+  transform: translateY(-2px);
+}
+
+.load-btn i {
+  font-size: 1.1rem;
+}
+
+.pptx-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+  gap: 1rem;
+}
+
+.pptx-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #4a5568;
+}
+
+.pptx-preview i {
+  font-size: 3rem;
+  color: #e53e3e;
+}
+
+.pptx-preview span {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.download-only-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+  min-height: 300px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+  min-height: 300px;
+  color: #4a5568;
+}
+
+.loading-container i {
+  font-size: 2rem;
+  color: var(--primary-color);
+}
+
+.loading-container span {
+  font-size: 1.1rem;
+}
+
+.file-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 200px;
+}
+
+.file-preview:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+}
+
+.file-icon {
+  font-size: 4rem;
+}
+
+.file-icon.text-red-500, .file-icon.text-red-600 {
+  color: #dc2626;
+}
+
+.file-icon.text-blue-600 {
+  color: #2563eb;
+}
+
+.file-icon.text-green-600 {
+  color: #16a34a;
+}
+
+.file-icon.text-purple-600 {
+  color: #9333ea;
+}
+
+.file-icon.text-gray-600 {
+  color: #4b5563;
+}
+
+.file-icon.fa-file-pdf {
+  color: #dc2626;
+}
+
+.file-icon.fa-file-word {
+  color: #2563eb;
+}
+
+.file-icon.fa-file-excel {
+  color: #16a34a;
+}
+
+.file-icon.fa-file-powerpoint {
+  color: #ea580c;
+}
+
+.file-icon.fa-file-image {
+  color: #7c3aed;
+}
+
+.file-icon.fa-file-video {
+  color: #0891b2;
+}
+
+.file-icon.fa-file-audio {
+  color: #db2777;
+}
+
+.file-icon.fa-file-archive {
+  color: #854d0e;
+}
+
+.file-icon.fa-file-code {
+  color: #475569;
+}
+
+.file-icon.fa-file {
+  color: #64748b;
+}
+
+.compact-file-preview {
+  display: flex;
+  align-items: stretch;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-info i {
+  font-size: 1.2rem;
+  color: #4a5568;
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 0.9rem;
+  color: #4a5568;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact-download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 2rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.95rem;
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.compact-download-btn:hover {
+  background: var(--accent-color);
+}
+
+.compact-download-btn i {
+  font-size: 1.1rem;
+}
+
+/* Стили для иконок файлов */
+.compact-file-preview .file-info i.fa-file-pdf {
+  color: #dc2626;
+}
+
+.compact-file-preview .file-info i.fa-file-word {
+  color: #2563eb;
+}
+
+.compact-file-preview .file-info i.fa-file-excel {
+  color: #16a34a;
+}
+
+.compact-file-preview .file-info i.fa-file-powerpoint {
+  color: #ea580c;
+}
+
+.compact-file-preview .file-info i.fa-file-image {
+  color: #7c3aed;
+}
+
+.compact-file-preview .file-info i.fa-file-video {
+  color: #0891b2;
+}
+
+.compact-file-preview .file-info i.fa-file-audio {
+  color: #db2777;
+}
+
+.compact-file-preview .file-info i.fa-file-archive {
+  color: #854d0e;
+}
+
+.compact-file-preview .file-info i.fa-file-code {
+  color: #475569;
+}
+
+.compact-file-preview .file-info i.fa-file {
+  color: #64748b;
 }
 </style> 
