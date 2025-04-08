@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api';
+const AVATAR_BASE_URL = 'http://localhost:8080';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -10,6 +11,18 @@ const api = axios.create({
     },
     withCredentials: true
 });
+
+const processUserData = (userData) => {
+    if (userData.avatarUrl) {
+        // Проверяем, начинается ли URL с http:// или https://
+        if (!userData.avatarUrl.startsWith('http://') && !userData.avatarUrl.startsWith('https://')) {
+            // Убираем начальный слеш, если он есть
+            const cleanPath = userData.avatarUrl.startsWith('/') ? userData.avatarUrl.slice(1) : userData.avatarUrl
+            userData.avatarUrl = `${AVATAR_BASE_URL}/${cleanPath}`
+        }
+    }
+    return userData;
+};
 
 export const authService = {
     async login(email, password) {
@@ -25,7 +38,8 @@ export const authService = {
             console.log('Куки после входа:', document.cookie);
             
             if (response.data.user) {
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                const processedUser = processUserData(response.data.user);
+                localStorage.setItem('user', JSON.stringify(processedUser));
                 return response.data;
             } else {
                 throw new Error('Пользователь не найден в ответе сервера');
@@ -59,7 +73,8 @@ export const authService = {
             console.log('Куки после регистрации:', document.cookie);
             
             if (response.data.user) {
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                const processedUser = processUserData(response.data.user);
+                localStorage.setItem('user', JSON.stringify(processedUser));
                 return response.data;
             } else {
                 throw new Error('Пользователь не найден в ответе сервера');

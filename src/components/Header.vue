@@ -67,10 +67,9 @@ export default {
       showNotifications: false,
       showUserMenu: false,
       user: {
-        id: 1,
-        name: 'Иван Петров',
+        name: '',
         avatar: '/images/student_icon.png',
-        email: 'ivan@example.com',
+        email: '',
         role: null
       },
       notifications: [
@@ -129,20 +128,19 @@ export default {
       this.isMenuOpen = false;
     },
     loadUserData() {
-      const user = authService.getCurrentUser();
-      if (user) {
+      const currentUser = authService.getCurrentUser()
+      if (currentUser) {
         this.user = {
-          ...this.user,
-          name: user.name,
-          avatar: user.avatar || '/images/student_icon.png',
-          email: user.email,
-          role: user.role
-        };
+          name: currentUser.name || '',
+          avatar: currentUser.avatarUrl || '/images/student_icon.png',
+          email: currentUser.email || '',
+          role: currentUser.role || null
+        }
       }
     }
   },
   mounted() {
-    this.loadUserData();
+    this.loadUserData()
   }
 }
 </script>

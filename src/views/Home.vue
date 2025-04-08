@@ -757,16 +757,18 @@ export default {
 .btn-primary {
   background: var(--primary-color);
   color: white;
+  border: 2px solid var(--primary-color);
+}
+
+.btn-primary:hover {
+  background: transparent;
+  color: white;
 }
 
 .btn-secondary {
   background: transparent;
   color: white;
   border: 2px solid white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-color-dark);
 }
 
 .btn-secondary:hover {

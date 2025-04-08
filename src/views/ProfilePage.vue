@@ -15,11 +15,20 @@
             <p class="text-muted">Управление личными данными</p>
           </div>
 
+          <div v-if="error" class="alert alert-danger">
+            {{ error }}
+          </div>
+
           <div class="profile-body">
             <div class="avatar-section">
-              <img :src="user.avatar || '/default-avatar.png'" alt="Аватар" class="avatar" />
+              <img 
+                :src="user.avatar || '/images/student_icon.png'" 
+                alt="Аватар" 
+                class="avatar" 
+                @error="handleImageError"
+              />
               <div class="avatar-actions">
-                <label class="btn btn-primary">
+                <label class="btn btn-primary" :class="{ 'is-uploading': isLoading }">
                   <i class="fas fa-camera"></i> Изменить фото
                   <input type="file" @change="handleAvatarUpload" accept="image/*" style="display: none" />
                 </label>
@@ -29,13 +38,15 @@
             <div class="info-section">
               <form @submit.prevent="handleSubmit">
                 <div class="info-group">
-                  <label>Имя</label>
-                  <div class="info-value">
+                  <div class="field-label">Имя пользователя</div>
+                  <div class="field-value">
                     <template v-if="isEditing">
                       <input 
                         type="text" 
                         v-model="user.name" 
                         class="form-input"
+                        placeholder="Введите ваше имя"
+                        :disabled="isLoading"
                       />
                     </template>
                     <template v-else>
@@ -45,13 +56,15 @@
                 </div>
 
                 <div class="info-group">
-                  <label>Email</label>
-                  <div class="info-value">
+                  <div class="field-label">Электронная почта</div>
+                  <div class="field-value">
                     <template v-if="isEditing">
                       <input 
                         type="email" 
                         v-model="user.email" 
                         class="form-input"
+                        placeholder="Введите ваш email"
+                        :disabled="isLoading"
                       />
                     </template>
                     <template v-else>
@@ -60,18 +73,12 @@
                   </div>
                 </div>
 
-                <div class="info-group">
-                  <label>Дата регистрации</label>
-                  <div class="info-value">
-                    <p>{{ formatDate(user.registrationDate) }}</p>
-                  </div>
-                </div>
-
                 <div class="form-actions">
                   <button 
                     type="button" 
                     @click="toggleEdit" 
                     class="btn btn-secondary"
+                    :disabled="isLoading"
                   >
                     {{ isEditing ? 'Отмена' : 'Редактировать' }}
                   </button>
@@ -79,8 +86,9 @@
                     v-if="isEditing" 
                     type="submit" 
                     class="btn btn-primary"
+                    :disabled="isLoading"
                   >
-                    Сохранить изменения
+                    {{ isLoading ? 'Сохранение...' : 'Сохранить изменения' }}
                   </button>
                 </div>
               </form>
@@ -96,6 +104,7 @@
 <script>
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { profileService } from '@/services/profileService'
 import { authService } from '@/services/authService'
 
 export default {
@@ -110,34 +119,105 @@ export default {
         name: '',
         email: '',
         avatar: '',
-        registrationDate: null
+        role: null,
+        createdAt: null,
+        updatedAt: null
       },
-      isEditing: false
+      isEditing: false,
+      avatarFile: null,
+      isLoading: false,
+      error: null
     }
   },
   methods: {
     async loadUserData() {
       try {
-        const userData = await authService.getCurrentUser()
-        this.user = {
-          name: userData.name,
-          email: userData.email,
-          avatar: userData.avatar,
-          registrationDate: userData.registrationDate
+        this.isLoading = true
+        console.log('=== Начало загрузки данных пользователя в ProfilePage ===')
+        console.log('Текущее состояние пользователя:', this.user)
+        
+        const userData = await profileService.getProfile()
+        console.log('Ответ от сервера:', userData)
+        console.log('URL аватара:', userData.avatarUrl)
+        
+        // Проверяем наличие всех необходимых данных
+        if (!userData) {
+          throw new Error('Данные пользователя не получены')
         }
+        
+        // Обновляем данные пользователя
+        this.user = {
+          name: userData.name || '',
+          email: userData.email || '',
+          avatar: userData.avatarUrl || '/images/student_icon.png',
+          role: userData.role || null,
+          createdAt: userData.createdAt || null,
+          updatedAt: userData.updatedAt || null
+        }
+        
+        console.log('Обновленные данные пользователя:', this.user)
       } catch (error) {
+        this.error = 'Ошибка загрузки данных пользователя'
         console.error('Ошибка загрузки данных пользователя:', error)
+        console.error('Детали ошибки:', error.response?.data)
+        console.error('Статус ошибки:', error.response?.status)
+        
+        // Пробуем получить данные из localStorage как запасной вариант
+        const localUser = authService.getCurrentUser()
+        if (localUser) {
+          console.log('Попытка использовать данные из localStorage:', localUser)
+          this.user = {
+            name: localUser.name || '',
+            email: localUser.email || '',
+            avatar: localUser.avatarUrl || '/images/student_icon.png',
+            role: localUser.role || null,
+            createdAt: localUser.createdAt || null,
+            updatedAt: localUser.updatedAt || null
+          }
+        }
+      } finally {
+        this.isLoading = false
       }
     },
     toggleEdit() {
       this.isEditing = !this.isEditing
+      if (!this.isEditing) {
+        this.error = null
+      }
     },
     async handleSubmit() {
       try {
-        // Здесь будет логика обновления профиля
+        this.isLoading = true
+        this.error = null
+        
+        const profileData = {}
+        
+        if (this.user.name) {
+          profileData.name = this.user.name
+        }
+        
+        if (this.user.email) {
+          profileData.email = this.user.email
+        }
+        
+        if (this.avatarFile) {
+          profileData.avatarFile = this.avatarFile
+        }
+
+        const updatedUser = await profileService.updateProfile(profileData)
+        this.user = {
+          ...this.user,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatar: updatedUser.avatarUrl
+        }
+        
         this.isEditing = false
       } catch (error) {
+        this.error = 'Ошибка обновления профиля'
         console.error('Ошибка обновления профиля:', error)
+      } finally {
+        this.isLoading = false
       }
     },
     async handleAvatarUpload(event) {
@@ -145,13 +225,14 @@ export default {
       if (!file) return
 
       try {
-        // Здесь будет логика загрузки аватара
+        this.avatarFile = file
         const reader = new FileReader()
         reader.onload = (e) => {
           this.user.avatar = e.target.result
         }
         reader.readAsDataURL(file)
       } catch (error) {
+        this.error = 'Ошибка загрузки аватара'
         console.error('Ошибка загрузки аватара:', error)
       }
     },
@@ -162,6 +243,10 @@ export default {
         month: 'long',
         day: 'numeric'
       })
+    },
+    handleImageError(e) {
+      console.error('Ошибка загрузки аватара:', e.target.src)
+      e.target.src = '/images/student_icon.png'
     }
   },
   mounted() {
@@ -311,29 +396,37 @@ export default {
 .info-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+  margin-bottom: 0.75rem;
 }
 
-.info-group label {
-  font-size: 0.9rem;
+.field-label {
+  font-size: 0.8rem;
   color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-value {
+  font-size: 1rem;
+  color: var(--text-color);
   font-weight: 500;
 }
 
-.info-value {
-  font-size: 1.1rem;
-  color: var(--text-color);
-}
-
-.info-value p {
+.field-value p {
   margin: 0;
+  padding: 0.25rem 0;
 }
 
 .form-input {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border: 2px solid #edf2f7;
   border-radius: var(--border-radius);
-  font-size: 1rem;
+  font-size: 0.95rem;
   transition: var(--transition);
   width: 100%;
 }
@@ -431,5 +524,29 @@ export default {
 .is-uploading {
   opacity: 0.7;
   pointer-events: none;
+}
+
+.alert {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+}
+
+.alert-danger {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.form-input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
 }
 </style> 
