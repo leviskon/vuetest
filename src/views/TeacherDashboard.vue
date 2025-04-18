@@ -174,7 +174,11 @@ export default {
         this.courses = data.map(course => {
           console.log('Обработка курса:', course);
           const imageUrl = course.imageUrl 
-            ? `http://localhost:8080/${course.imageUrl.replace(/^\/+/, '')}` 
+            ? course.imageUrl.startsWith('http') 
+              ? course.imageUrl 
+              : course.imageUrl.startsWith('/uploads')
+                ? `http://localhost:8080${course.imageUrl}`
+                : `http://localhost:8080/uploads/courses/images/${course.imageUrl.replace(/^\/+/, '')}`
             : null;
           console.log('URL изображения:', imageUrl);
           

@@ -38,6 +38,13 @@
               <i class="fas fa-pencil-alt"></i>
             </div>
           </div>
+          <v-text-field
+            v-model="course.category"
+            label="Категория"
+            :value="formatCategory(course.category)"
+            readonly
+            disabled
+          ></v-text-field>
         </div>
         <div class="course-actions">
           <template v-if="!isEditingCourse">
@@ -487,6 +494,18 @@ export default defineComponent({
     }
   },
   methods: {
+    formatCategory(category) {
+      if (!category) return '';
+      const categoryMap = {
+        'PROGRAMMING': 'Программирование',
+        'DESIGN': 'Дизайн',
+        'MARKETING': 'Маркетинг',
+        'BUSINESS': 'Бизнес',
+        'LANGUAGE': 'Языки',
+        'OTHER': 'Другое'
+      };
+      return categoryMap[category.toUpperCase()] || category;
+    },
     goBack() {
       this.$router.push('/teacher/dashboard')
     },

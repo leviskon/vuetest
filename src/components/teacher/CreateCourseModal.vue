@@ -58,10 +58,12 @@
         <div class="form-group">
           <label for="category">Категория</label>
           <select id="category" v-model="form.category" required>
-            <option value="Programming">Программирование</option>
-            <option value="Design">Дизайн</option>
-            <option value="Marketing">Маркетинг</option>
-            <option value="Business">Бизнес</option>
+            <option value="PROGRAMMING">Программирование</option>
+            <option value="DESIGN">Дизайн</option>
+            <option value="MARKETING">Маркетинг</option>
+            <option value="BUSINESS">Бизнес</option>
+            <option value="LANGUAGE">Языки</option>
+            <option value="OTHER">Другое</option>
           </select>
         </div>
 

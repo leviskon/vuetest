@@ -4,11 +4,13 @@
       <div v-for="course in courses" :key="course.id" class="course-card">
         <div class="course-image">
           <img 
-            :src="course.image" 
+            v-if="course.image" 
+            :src="getImageUrl(course.image)" 
             :alt="course.title"
             crossorigin="use-credentials"
             @error="handleImageError"
           >
+          <div v-else class="image-placeholder">{{ course.title[0] }}</div>
           <div class="course-overlay">
             <button class="edit-btn" @click="editCourse(course)">
               <i class="fas fa-edit"></i>
@@ -21,6 +23,10 @@
         <div class="course-info">
           <h3>{{ course.title }}</h3>
           <p class="course-description">{{ course.description }}</p>
+          <div class="course-meta">
+            <span class="course-category">{{ formatCategory(course.category) }}</span>
+            <span class="course-level">{{ formatLevel(course.level) }}</span>
+          </div>
           <div class="course-stats">
             <div class="stat">
               <i class="fas fa-users"></i>
@@ -93,8 +99,66 @@ export default defineComponent({
   setup(props, { emit }) {
     const router = useRouter()
 
+    const formatCategory = (category) => {
+      if (!category) return '';
+      
+      // Приводим категорию к верхнему регистру для сравнения
+      const upperCategory = category.toUpperCase();
+      
+      const categoryMap = {
+        'PROGRAMMING': 'Программирование',
+        'DESIGN': 'Дизайн',
+        'MARKETING': 'Маркетинг',
+        'BUSINESS': 'Бизнес',
+        'LANGUAGE': 'Языки',
+        'OTHER': 'Другое'
+      };
+      return categoryMap[upperCategory] || category;
+    }
+
+    const formatLevel = (level) => {
+      const levelMap = {
+        'BEGINNER': 'Начинающий',
+        'INTERMEDIATE': 'Средний',
+        'ADVANCED': 'Продвинутый'
+      };
+      return levelMap[level] || level;
+    }
+
     const handleImageError = (event) => {
       console.error('Ошибка загрузки изображения:', event.target.src);
+      event.target.style.display = 'none';
+      const placeholder = event.target.parentElement.querySelector('.image-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'flex';
+      }
+    }
+
+    const getImageUrl = (imageUrl) => {
+      if (!imageUrl) {
+        console.log('imageUrl отсутствует');
+        return null;
+      }
+      
+      console.log('Исходный imageUrl:', imageUrl);
+      
+      // Если URL уже полный, возвращаем его
+      if (imageUrl.startsWith('http')) {
+        console.log('Полный URL:', imageUrl);
+        return imageUrl;
+      }
+      
+      // Если URL начинается с /uploads, добавляем только домен
+      if (imageUrl.startsWith('/uploads')) {
+        const fullUrl = `http://localhost:8080${imageUrl}`;
+        console.log('URL с /uploads:', fullUrl);
+        return fullUrl;
+      }
+      
+      // В остальных случаях добавляем путь к директории с изображениями
+      const fullUrl = `http://localhost:8080/uploads/courses/images/${imageUrl}`;
+      console.log('Сформированный URL:', fullUrl);
+      return fullUrl;
     }
 
     const editCourse = (course) => {
@@ -133,7 +197,10 @@ export default defineComponent({
     return {
       editCourse,
       deleteCourse,
-      handleImageError
+      handleImageError,
+      getImageUrl,
+      formatCategory,
+      formatLevel
     }
   }
 })
@@ -228,6 +295,32 @@ export default defineComponent({
   color: #6c757d;
   font-size: 0.9rem;
   margin-bottom: 1rem;
+}
+
+.course-meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.course-category,
+.course-level {
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  background: #f8f9fa;
+  font-size: 0.85rem;
+}
+
+.course-category {
+  color: var(--primary-color);
+  background: rgba(76, 201, 240, 0.1);
+}
+
+.course-level {
+  color: var(--accent-color);
+  background: rgba(255, 107, 107, 0.1);
 }
 
 .course-stats {

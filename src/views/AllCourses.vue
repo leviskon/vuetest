@@ -24,38 +24,51 @@
               <select v-model="selectedCategory" @change="filterCourses">
                 <option value="">Все категории</option>
                 <option v-for="category in categories" :key="category" :value="category">
-                  {{ category }}
+                  {{ formatCategory(category) }}
                 </option>
               </select>
               <select v-model="selectedLevel" @change="filterCourses">
                 <option value="">Все уровни</option>
                 <option v-for="level in levels" :key="level" :value="level">
-                  {{ level }}
+                  {{ formatLevel(level) }}
                 </option>
               </select>
               <select v-model="sortBy" @change="filterCourses">
                 <option value="popular">По популярности</option>
                 <option value="newest">По новизне</option>
-                <option value="price-asc">По цене (возрастание)</option>
-                <option value="price-desc">По цене (убывание)</option>
               </select>
             </div>
           </div>
         </div>
 
-        <div class="courses-grid">
+        <div v-if="isLoading" class="loading-state">
+          <div class="spinner"></div>
+          <p>Загрузка курсов...</p>
+        </div>
+
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+        </div>
+
+        <div v-else class="courses-grid">
           <div v-for="course in filteredCourses" :key="course.id" class="course-card">
-            <div class="course-image" :style="{ backgroundColor: course.color }">
-              <div class="image-placeholder">{{ course.title[0] }}</div>
+            <div class="course-image" :style="{ backgroundColor: '#4361ee' }">
+              <img 
+                v-if="course.imageUrl" 
+                :src="getImageUrl(course.imageUrl)" 
+                :alt="course.name"
+                @error="handleImageError"
+                class="course-img"
+              >
+              <div v-else class="image-placeholder">{{ course.name[0] }}</div>
             </div>
             <div class="course-card__content">
-              <div class="course-category">{{ course.category }}</div>
-              <h3>{{ course.title }}</h3>
+              <h3>{{ course.name }}</h3>
               <p>{{ course.description }}</p>
               <div class="course-meta">
-                <div class="course-level">{{ course.level }}</div>
-                <div class="course-duration">{{ course.duration }}</div>
-                <div class="course-price">{{ course.price }} ₽</div>
+                <span class="course-category">{{ formatCategory(course.category) }}</span>
+                <span class="course-level">{{ formatLevel(course.level) }}</span>
+                <span class="course-duration">{{ course.totalStudents }} студентов</span>
               </div>
               <div class="course-card__footer">
                 <button class="btn btn-primary" @click="$router.push(`/course/${course.id}`)">
@@ -88,76 +101,11 @@ export default {
       selectedCategory: '',
       selectedLevel: '',
       sortBy: 'popular',
-      categories: ['Веб-разработка', 'Мобильная разработка', 'Дизайн', 'Аналитика данных', 'Искусственный интеллект'],
-      levels: ['Начинающий', 'Средний', 'Продвинутый'],
-      courses: [
-        {
-          id: 1,
-          title: 'Веб-разработка с нуля',
-          description: 'Полный курс по созданию современных веб-сайтов с использованием HTML, CSS и JavaScript',
-          category: 'Веб-разработка',
-          level: 'Начинающий',
-          duration: '6 месяцев',
-          price: 29999,
-          color: '#4361ee',
-          enrolled: 1200
-        },
-        {
-          id: 2,
-          title: 'React и Redux',
-          description: 'Создание современных веб-приложений с использованием React и Redux',
-          category: 'Веб-разработка',
-          level: 'Средний',
-          duration: '4 месяца',
-          price: 39999,
-          color: '#3f37c9',
-          enrolled: 800
-        },
-        {
-          id: 3,
-          title: 'UI/UX Дизайн',
-          description: 'Создание пользовательских интерфейсов и улучшение пользовательского опыта',
-          category: 'Дизайн',
-          level: 'Средний',
-          duration: '3 месяца',
-          price: 34999,
-          color: '#f72585',
-          enrolled: 600
-        },
-        {
-          id: 4,
-          title: 'Python для Data Science',
-          description: 'Анализ данных и машинное обучение с использованием Python',
-          category: 'Аналитика данных',
-          level: 'Продвинутый',
-          duration: '5 месяцев',
-          price: 44999,
-          color: '#4cc9f0',
-          enrolled: 900
-        },
-        {
-          id: 5,
-          title: 'iOS Разработка',
-          description: 'Создание приложений для iOS с использованием Swift',
-          category: 'Мобильная разработка',
-          level: 'Средний',
-          duration: '4 месяца',
-          price: 49999,
-          color: '#3a0ca3',
-          enrolled: 700
-        },
-        {
-          id: 6,
-          title: 'Машинное обучение',
-          description: 'Основы машинного обучения и нейронных сетей',
-          category: 'Искусственный интеллект',
-          level: 'Продвинутый',
-          duration: '6 месяцев',
-          price: 59999,
-          color: '#7209b7',
-          enrolled: 500
-        }
-      ]
+      categories: ['PROGRAMMING', 'DESIGN', 'MARKETING', 'BUSINESS', 'LANGUAGE', 'OTHER'],
+      levels: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'],
+      courses: [],
+      isLoading: false,
+      error: null
     }
   },
   computed: {
@@ -168,14 +116,23 @@ export default {
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         filtered = filtered.filter(course => 
-          course.title.toLowerCase().includes(query) ||
+          course.name.toLowerCase().includes(query) ||
           course.description.toLowerCase().includes(query)
         );
       }
 
       // Фильтр по категории
       if (this.selectedCategory) {
-        filtered = filtered.filter(course => course.category === this.selectedCategory);
+        console.log('Фильтрация по категории:', this.selectedCategory);
+        console.log('До фильтрации:', filtered.length);
+        filtered = filtered.filter(course => {
+          // Приводим обе строки к верхнему регистру для сравнения
+          const courseCategory = (course.category || '').toUpperCase();
+          const selectedCategory = this.selectedCategory.toUpperCase();
+          console.log('Категория курса:', courseCategory, 'Выбранная категория:', selectedCategory);
+          return courseCategory === selectedCategory;
+        });
+        console.log('После фильтрации:', filtered.length);
       }
 
       // Фильтр по уровню
@@ -186,16 +143,10 @@ export default {
       // Сортировка
       switch (this.sortBy) {
         case 'popular':
-          filtered.sort((a, b) => b.enrolled - a.enrolled);
+          filtered.sort((a, b) => (b.totalStudents || 0) - (a.totalStudents || 0));
           break;
         case 'newest':
-          filtered.sort((a, b) => b.id - a.id);
-          break;
-        case 'price-asc':
-          filtered.sort((a, b) => a.price - b.price);
-          break;
-        case 'price-desc':
-          filtered.sort((a, b) => b.price - a.price);
+          filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           break;
       }
 
@@ -203,9 +154,104 @@ export default {
     }
   },
   methods: {
+    async loadCourses() {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        const response = await fetch('http://localhost:8080/api/courses', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке курсов');
+        }
+
+        const data = await response.json();
+        console.log('Полученные данные курсов:', data);
+        
+        // Логируем категории курсов
+        const courseCategories = data.map(course => course.category);
+        console.log('Категории курсов:', courseCategories);
+        console.log('Уникальные категории курсов:', [...new Set(courseCategories)]);
+        
+        this.courses = data;
+      } catch (error) {
+        console.error('Ошибка при загрузке курсов:', error);
+        this.error = 'Не удалось загрузить курсы. Пожалуйста, попробуйте позже.';
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    handleImageError(event) {
+      console.error('Ошибка загрузки изображения:', event.target.src);
+      event.target.style.display = 'none';
+      const placeholder = event.target.parentElement.querySelector('.image-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'flex';
+      }
+    },
+    formatCategory(category) {
+      if (!category) return '';
+      
+      // Приводим категорию к верхнему регистру для сравнения
+      const upperCategory = category.toUpperCase();
+      
+      const categoryMap = {
+        'PROGRAMMING': 'Программирование',
+        'DESIGN': 'Дизайн',
+        'MARKETING': 'Маркетинг',
+        'BUSINESS': 'Бизнес',
+        'LANGUAGE': 'Языки',
+        'OTHER': 'Другое'
+      };
+      return categoryMap[upperCategory] || category;
+    },
+    formatLevel(level) {
+      const levelMap = {
+        'BEGINNER': 'Начинающий',
+        'INTERMEDIATE': 'Средний',
+        'ADVANCED': 'Продвинутый'
+      };
+      return levelMap[level] || level;
+    },
+    getImageUrl(imageUrl) {
+      if (!imageUrl) {
+        console.log('imageUrl отсутствует');
+        return null;
+      }
+      
+      console.log('Исходный imageUrl:', imageUrl);
+      
+      // Если URL уже полный, возвращаем его
+      if (imageUrl.startsWith('http')) {
+        console.log('Полный URL:', imageUrl);
+        return imageUrl;
+      }
+      
+      // Если URL начинается с /uploads, добавляем только домен
+      if (imageUrl.startsWith('/uploads')) {
+        const fullUrl = `http://localhost:8080${imageUrl}`;
+        console.log('URL с /uploads:', fullUrl);
+        return fullUrl;
+      }
+      
+      // В остальных случаях добавляем путь к директории с изображениями
+      const fullUrl = `http://localhost:8080/uploads/courses/images/${imageUrl}`;
+      console.log('Сформированный URL:', fullUrl);
+      return fullUrl;
+    },
     filterCourses() {
       // Метод для дополнительной логики фильтрации, если потребуется
     }
+  },
+  mounted() {
+    this.loadCourses();
   }
 }
 </script>
@@ -332,6 +378,15 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.course-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .image-placeholder {
@@ -339,17 +394,48 @@ export default {
   font-weight: 700;
   color: white;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .course-card__content {
   padding: 1.5rem;
 }
 
-.course-category {
+.course-meta {
+  display: flex;
+  gap: 1rem;
+  margin: 0.5rem 0 1rem;
   font-size: 0.9rem;
+  color: #6c757d;
+  flex-wrap: wrap;
+}
+
+.course-category,
+.course-level,
+.course-duration {
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.85rem;
+  display: inline-block;
+}
+
+.course-category {
   color: var(--primary-color);
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  background: rgba(76, 201, 240, 0.1);
+}
+
+.course-level {
+  color: var(--accent-color);
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.course-duration {
+  color: #6c757d;
+  background: #f8f9fa;
 }
 
 .course-card__content h3 {
@@ -362,31 +448,6 @@ export default {
   margin-bottom: 1rem;
   font-size: 0.95rem;
   line-height: 1.5;
-}
-
-.course-meta {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  color: #6c757d;
-}
-
-.course-level {
-  background-color: #e9ecef;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-}
-
-.course-duration {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.course-price {
-  font-weight: 600;
-  color: var(--primary-color);
 }
 
 .course-card__footer {
