@@ -77,11 +77,42 @@
         </div>
       </div>
     </div>
+
+    <!-- Модальное окно подтверждения удаления -->
+    <div v-if="showDeleteModal" class="delete-modal-overlay" @click="closeDeleteModal">
+      <div class="delete-modal" @click.stop>
+        <div class="delete-modal-header">
+          <h3>Подтверждение удаления</h3>
+          <button class="close-btn" @click="closeDeleteModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="delete-modal-body">
+          <i class="fas fa-exclamation-triangle warning-icon"></i>
+          <p>Вы действительно хотите удалить курс "{{ selectedCourse?.title }}"?</p>
+          <p class="warning-text">Это действие невозможно отменить.</p>
+        </div>
+        <div class="delete-modal-footer">
+          <button class="cancel-btn" @click="closeDeleteModal">Отмена</button>
+          <button class="confirm-delete-btn" @click="confirmDelete">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно успешного удаления -->
+    <div v-if="showSuccessModal" class="success-modal-overlay">
+      <div class="success-modal">
+        <div class="success-modal-body">
+          <i class="fas fa-check-circle success-icon"></i>
+          <p>Курс успешно удален</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 export default defineComponent({
@@ -98,6 +129,9 @@ export default defineComponent({
   },
   setup(props, { emit }) {
     const router = useRouter()
+    const showDeleteModal = ref(false)
+    const showSuccessModal = ref(false)
+    const selectedCourse = ref(null)
 
     const formatCategory = (category) => {
       if (!category) return '';
@@ -168,13 +202,26 @@ export default defineComponent({
       })
     }
 
-    const deleteCourse = async (course) => {
-      if (!confirm('Вы уверены, что хотите удалить этот курс?')) {
-        return
-      }
+    const deleteCourse = (course) => {
+      selectedCourse.value = course
+      showDeleteModal.value = true
+    }
 
+    const closeDeleteModal = () => {
+      showDeleteModal.value = false
+      selectedCourse.value = null
+    }
+
+    const showSuccessMessage = () => {
+      showSuccessModal.value = true
+      setTimeout(() => {
+        showSuccessModal.value = false
+      }, 2000) // Окно исчезнет через 2 секунды
+    }
+
+    const confirmDelete = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/courses/${course.id}`, {
+        const response = await fetch(`http://localhost:8080/api/courses/${selectedCourse.value.id}`, {
           method: 'DELETE',
           credentials: 'include',
           headers: {
@@ -187,7 +234,9 @@ export default defineComponent({
           throw new Error('Ошибка при удалении курса')
         }
 
-        emit('course-deleted', course.id)
+        emit('course-deleted', selectedCourse.value.id)
+        closeDeleteModal()
+        showSuccessMessage()
       } catch (error) {
         console.error('Ошибка при удалении курса:', error)
         alert('Не удалось удалить курс. Пожалуйста, попробуйте позже.')
@@ -200,7 +249,12 @@ export default defineComponent({
       handleImageError,
       getImageUrl,
       formatCategory,
-      formatLevel
+      formatLevel,
+      showDeleteModal,
+      showSuccessModal,
+      closeDeleteModal,
+      confirmDelete,
+      selectedCourse
     }
   }
 })
@@ -416,4 +470,173 @@ export default defineComponent({
     flex-wrap: wrap;
   }
 }
-</style> 
+
+/* Стили для модального окна */
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.delete-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  animation: modal-appear 0.3s ease;
+}
+
+.delete-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.delete-modal-header h3 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: var(--text-color);
+}
+
+.delete-modal-body {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.warning-icon {
+  font-size: 3rem;
+  color: #ffc107;
+  margin-bottom: 16px;
+}
+
+.warning-text {
+  color: #dc3545;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.delete-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancel-btn, .confirm-delete-btn {
+  padding: 8px 24px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn {
+  background: #f8f9fa;
+  color: var(--text-color);
+}
+
+.cancel-btn:hover {
+  background: #e9ecef;
+}
+
+.confirm-delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.confirm-delete-btn:hover {
+  background: #c82333;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Стили для модального окна успешного удаления */
+.success-modal-overlay {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  animation: slide-in 0.3s ease, slide-out 0.3s ease 1.7s;
+}
+
+.success-modal {
+  background: #4BB543;
+  color: white;
+  border-radius: 8px;
+  padding: 16px 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  min-width: 300px;
+}
+
+.success-modal-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.success-icon {
+  font-size: 1.5rem;
+}
+
+.success-modal p {
+  margin: 0;
+  font-weight: 500;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+</style>

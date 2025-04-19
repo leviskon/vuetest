@@ -5,48 +5,50 @@
     <main class="main">
       <div class="dashboard-container">
         <div class="dashboard-header">
-          <h1>Панель управления курсами</h1>
-          <button class="create-course-btn" @click="showCreateCourseModal = true">
-            <i class="fas fa-plus"></i>
-            Создать новый курс
-          </button>
-        </div>
+          <div class="header-top">
+            <h1>Панель управления курсами</h1>
+            <button class="create-course-btn" @click="showCreateCourseModal = true">
+              <i class="fas fa-plus"></i>
+              Создать новый курс
+            </button>
+          </div>
 
-        <div class="dashboard-stats">
-          <div class="stat-card">
-            <div class="stat-icon">
-              <i class="fas fa-book"></i>
+          <div class="dashboard-stats">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <i class="fas fa-book"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Активные курсы</h3>
+                <p class="stat-number">{{ stats.activeCourses }}</p>
+              </div>
             </div>
-            <div class="stat-info">
-              <h3>Активные курсы</h3>
-              <p class="stat-number">{{ stats.activeCourses }}</p>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Студенты</h3>
+                <p class="stat-number">{{ stats.totalStudents }}</p>
+              </div>
             </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">
-              <i class="fas fa-users"></i>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <i class="fas fa-tasks"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Задания на проверку</h3>
+                <p class="stat-number">{{ stats.pendingAssignments }}</p>
+              </div>
             </div>
-            <div class="stat-info">
-              <h3>Студенты</h3>
-              <p class="stat-number">{{ stats.totalStudents }}</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">
-              <i class="fas fa-tasks"></i>
-            </div>
-            <div class="stat-info">
-              <h3>Задания на проверку</h3>
-              <p class="stat-number">{{ stats.pendingAssignments }}</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">
-              <i class="fas fa-star"></i>
-            </div>
-            <div class="stat-info">
-              <h3>Средняя оценка</h3>
-              <p class="stat-number">{{ stats.averageRating }}</p>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <i class="fas fa-star"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Средняя оценка</h3>
+                <p class="stat-number">{{ stats.averageRating }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -260,6 +262,7 @@ export default {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  margin-top: 5rem;
 }
 
 .dashboard-container {
@@ -269,58 +272,80 @@ export default {
 }
 
 .dashboard-header {
-  background: white;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
   border-radius: var(--border-radius);
-  padding: 2rem;
+  padding: 2.5rem;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: var(--box-shadow);
+  flex-direction: column;
+  gap: 2.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   position: relative;
+  margin-top: 1rem;
+  color: white;
+  overflow: hidden;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.dashboard-header::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.dashboard-header::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: -30px;
+  width: 150px;
+  height: 150px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  z-index: 0;
 }
 
 .dashboard-header h1 {
   font-size: 1.75rem;
-  color: var(--text-color);
+  color: white;
   margin: 0;
   position: relative;
-  padding-bottom: 0.75rem;
-  text-align: center;
-  width: fit-content;
-}
-
-.dashboard-header h1::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-  border-radius: 2px;
+  z-index: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .create-course-btn {
-  position: absolute;
-  right: 2rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  background: rgba(255, 255, 255, 0.2);
   color: white;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--border-radius);
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 4px 15px rgba(76, 201, 240, 0.2);
+  backdrop-filter: blur(5px);
+  z-index: 1;
 }
 
 .create-course-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(76, 201, 240, 0.3);
 }
 
 .create-course-btn i {
@@ -329,56 +354,64 @@ export default {
 
 .dashboard-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .stat-card {
-  background: white;
-  border-radius: var(--border-radius);
+  background: rgba(255, 255, 255, 0.1);
   padding: 1.5rem;
-  box-shadow: var(--box-shadow);
-  transition: var(--transition);
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
   border-radius: 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.stat-icon i {
+.stat-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.5rem;
-  color: white;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-info {
+  flex: 1;
 }
 
 .stat-info h3 {
-  font-size: 0.95rem;
-  color: #6c757d;
-  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.25rem;
   font-weight: 500;
 }
 
 .stat-number {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-color);
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: white;
+  margin: 0;
 }
 
 .dashboard-content {
+  margin-top: 2rem;
   display: grid;
   gap: 2rem;
 }
@@ -486,32 +519,45 @@ export default {
   }
 
   .dashboard-header {
+    padding: 1.5rem;
+  }
+
+  .header-top {
     flex-direction: column;
     gap: 1rem;
-    padding-bottom: 4rem;
+    text-align: center;
   }
 
   .create-course-btn {
-    position: relative;
-    right: auto;
-    margin-top: 1rem;
     width: 100%;
     justify-content: center;
   }
 
-  .section-header {
-    flex-direction: column;
-    gap: 1rem;
-    padding-bottom: 3rem;
+  .dashboard-stats {
+    grid-template-columns: 1fr;
   }
+  
+  .stat-card {
+    padding: 1.25rem;
+  }
+  
+  .stat-icon {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .stat-icon i {
+    font-size: 1.25rem;
+  }
+  
+  .stat-number {
+    font-size: 1.5rem;
+  }
+}
 
-  .section-actions {
-    position: relative;
-    right: auto;
-    top: auto;
-    transform: none;
-    width: 100%;
-    justify-content: flex-end;
+@media (max-width: 576px) {
+  .dashboard-stats {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -557,4 +603,4 @@ export default {
   opacity: 0.5;
   cursor: not-allowed;
 }
-</style> 
+</style>

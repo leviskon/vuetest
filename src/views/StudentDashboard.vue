@@ -31,6 +31,7 @@ import CoursesSection from '@/components/CoursesSection.vue'
 import AssignmentsSection from '@/components/AssignmentsSection.vue'
 import CalendarSection from '@/components/CalendarSection.vue'
 import Footer from '@/components/Footer.vue'
+import { authService } from '@/services/authService'
 
 export default {
   name: 'StudentDashboard',
@@ -45,10 +46,10 @@ export default {
   data() {
     return {
       user: {
-        id: 1,
-        name: 'Иван Петров',
+        id: null,
+        name: '',
         avatar: '/images/student_icon.png',
-        email: 'ivan@example.com'
+        email: ''
       },
       enrolledCourses: [
         {
@@ -122,6 +123,17 @@ export default {
           description: 'Обсуждение прогресса по курсу UX/UI Дизайн'
         }
       ]
+    }
+  },
+  created() {
+    const currentUser = authService.getCurrentUser()
+    if (currentUser) {
+      this.user = {
+        id: currentUser.id,
+        name: currentUser.name,
+        avatar: currentUser.avatarUrl || '/images/student_icon.png',
+        email: currentUser.email
+      }
     }
   },
   computed: {

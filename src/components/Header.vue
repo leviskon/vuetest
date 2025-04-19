@@ -1,11 +1,17 @@
 <template>
   <header class="header">
     <div class="header__container">
+      <div class="header__brand">
+        <img src="/images/skillup-logo.png" alt="SkillUp Logo" class="header__logo">
+        <h1 class="header__title">SkillUp</h1>
+      </div>
+
       <div class="burger-menu" @click="toggleMenu">
         <span></span>
         <span></span>
         <span></span>
       </div>
+
       <nav class="header__nav" :class="{ active: isMenuOpen }">
         <ul>
           <template v-if="isTeacher">
@@ -16,14 +22,21 @@
           </template>
         </ul>
       </nav>
+
       <div class="header__user">
         <div class="notifications" @click="toggleNotifications">
-          <span class="notification-icon">🔔</span>
+          <div class="notification-icon">
+            <i class="fas fa-bell"></i>
+          </div>
           <span v-if="notifications.length > 0" class="notification-badge">{{ notifications.length }}</span>
           <div class="notifications-dropdown" v-if="showNotifications">
-            <h3>Уведомления</h3>
+            <div class="notifications-header">
+              <h3>Уведомления</h3>
+              <button class="clear-all" @click="clearNotifications">Очистить все</button>
+            </div>
             <div v-if="notifications.length === 0" class="empty-notifications">
-              У вас нет новых уведомлений
+              <i class="fas fa-bell-slash"></i>
+              <p>У вас нет новых уведомлений</p>
             </div>
             <div v-else class="notifications-list">
               <div v-for="(notification, index) in notifications" :key="index" class="notification-item">
@@ -36,16 +49,24 @@
             </div>
           </div>
         </div>
+
         <div class="user-profile" @click="toggleUserMenu">
           <img :src="user.avatar" :alt="user.name" class="user-avatar">
-          <span class="user-name">{{ user.name }}</span>
+          <div class="user-info">
+            <span class="user-name">{{ user.name }}</span>
+            <span class="user-role">{{ isTeacher ? 'Преподаватель' : 'Студент' }}</span>
+          </div>
           <div class="user-menu" v-if="showUserMenu">
             <router-link :to="isTeacher ? '/teacher/profile' : '/profile'" class="menu-item">
               <i class="fas fa-user"></i>
               Мой профиль
             </router-link>
+            <router-link :to="isTeacher ? '/teacher/settings' : '/settings'" class="menu-item">
+              <i class="fas fa-cog"></i>
+              Настройки
+            </router-link>
             <div class="menu-divider"></div>
-            <a href="#" class="menu-item" @click.prevent="logout">
+            <a href="#" class="menu-item logout" @click.prevent="logout">
               <i class="fas fa-sign-out-alt"></i>
               Выйти
             </a>
@@ -115,6 +136,10 @@ export default {
         this.showNotifications = false;
       }
     },
+    clearNotifications() {
+      this.notifications = [];
+      this.showNotifications = false;
+    },
     async logout() {
       await authService.logout();
       this.$router.push('/');
@@ -147,52 +172,83 @@ export default {
 
 <style scoped>
 .header {
-  background-color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  position: sticky;
-  top: 0;
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000;
+  width: 90%;
+  max-width: 1136px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  padding: 0.5rem 0;
 }
 
 .header__container {
-  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-  padding: 1rem 2rem;
+  padding: 0.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header__brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header__logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.header__title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
 }
 
 .header__nav ul {
   display: flex;
   gap: 2rem;
   list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .header__nav a {
   color: var(--text-color);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 1.1rem;
+  position: relative;
+  padding: 0.5rem 0;
   transition: var(--transition);
 }
 
-.header__nav a:hover {
-  color: var(--primary-color);
+.header__nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  transition: width 0.3s ease;
 }
 
-.burger-menu {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  cursor: pointer;
-}
-
-.burger-menu span {
-  display: block;
-  width: 30px;
-  height: 3px;
-  background-color: var(--text-color);
-  transition: var(--transition);
+.header__nav a:hover::after {
+  width: 100%;
 }
 
 .header__user {
@@ -207,29 +263,32 @@ export default {
 }
 
 .notification-icon {
-  font-size: 1.4rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(67, 97, 238, 0.1);
+  color: var(--primary-color);
   transition: var(--transition);
-  display: inline-block;
+}
+
+.notification-icon i {
+  font-size: 1.2rem;
 }
 
 .notifications:hover .notification-icon {
-  animation: bellShake 0.5s ease-in-out;
-}
-
-@keyframes bellShake {
-  0% { transform: rotate(0); }
-  20% { transform: rotate(15deg); }
-  40% { transform: rotate(-15deg); }
-  60% { transform: rotate(7deg); }
-  80% { transform: rotate(-7deg); }
-  100% { transform: rotate(0); }
+  background: var(--primary-color);
+  color: white;
+  transform: scale(1.1);
 }
 
 .notification-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background-color: var(--accent-color);
+  top: -5px;
+  right: -5px;
+  background: var(--accent-color);
   color: white;
   border-radius: 50%;
   width: 20px;
@@ -239,6 +298,7 @@ export default {
   align-items: center;
   justify-content: center;
   font-weight: 600;
+  border: 2px solid white;
 }
 
 .notifications-dropdown {
@@ -247,24 +307,61 @@ export default {
   right: -100px;
   width: 350px;
   background: white;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  padding: 1rem;
+  overflow: hidden;
   animation: fadeIn 0.3s;
 }
 
-.notifications-dropdown h3 {
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
+.notifications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
   border-bottom: 1px solid #f1f1f1;
+}
+
+.notifications-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-color);
+}
+
+.clear-all {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: var(--transition);
+}
+
+.clear-all:hover {
+  color: var(--secondary-color);
+}
+
+.empty-notifications {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+}
+
+.empty-notifications i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.notifications-list {
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .notification-item {
   padding: 1rem;
   border-bottom: 1px solid #f5f5f5;
-  display: flex;
-  gap: 1rem;
   transition: var(--transition);
 }
 
@@ -273,15 +370,17 @@ export default {
 }
 
 .notification-item:hover {
-  background-color: #f9f9f9;
+  background-color: #f8f9fa;
 }
 
 .notification-content h4 {
-  margin-bottom: 0.25rem;
+  margin: 0 0 0.5rem 0;
   font-size: 1rem;
+  color: var(--text-color);
 }
 
 .notification-content p {
+  margin: 0;
   font-size: 0.9rem;
   color: #6c757d;
 }
@@ -289,37 +388,23 @@ export default {
 .notification-time {
   font-size: 0.8rem;
   color: #adb5bd;
-  white-space: nowrap;
-}
-
-.empty-notifications {
-  padding: 1.5rem;
-  text-align: center;
-  color: #6c757d;
+  margin-top: 0.5rem;
 }
 
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   cursor: pointer;
   position: relative;
-  padding: 0.5rem;
-  border-radius: 25px;
-  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  transition: var(--transition);
+  background: rgba(67, 97, 238, 0.05);
 }
 
 .user-profile:hover {
-  background-color: #f5f5f5;
-}
-
-.user-profile:hover .user-avatar {
-  transform: scale(1.1);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-}
-
-.user-profile:hover .user-name {
-  color: var(--primary-color);
+  background: rgba(67, 97, 238, 0.1);
 }
 
 .user-avatar {
@@ -329,12 +414,23 @@ export default {
   object-fit: cover;
   border: 2px solid white;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  transition: var(--transition);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
 }
 
 .user-name {
   font-weight: 600;
-  transition: color 0.3s ease;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.user-role {
+  font-size: 0.8rem;
+  color: #6c757d;
 }
 
 .user-menu {
@@ -342,11 +438,13 @@ export default {
   top: 100%;
   right: 0;
   background: white;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   padding: 0.5rem;
   min-width: 200px;
   z-index: 1000;
+  margin-top: 0.5rem;
+  animation: fadeIn 0.3s;
 }
 
 .menu-item {
@@ -356,7 +454,7 @@ export default {
   padding: 0.75rem 1rem;
   color: var(--text-color);
   text-decoration: none;
-  border-radius: var(--border-radius);
+  border-radius: 8px;
   transition: var(--transition);
 }
 
@@ -386,7 +484,50 @@ export default {
   color: #dc3545;
 }
 
+.burger-menu {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.burger-menu span {
+  display: block;
+  width: 25px;
+  height: 3px;
+  background: var(--text-color);
+  transition: var(--transition);
+  border-radius: 3px;
+}
+
+.burger-menu:hover span {
+  background: var(--primary-color);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
+  .header {
+    top: 1rem;
+    width: 95%;
+    padding: 0.3rem 0;
+  }
+
+  .header__container {
+    padding: 0.3rem 1rem;
+    justify-content: space-between;
+  }
+
   .burger-menu {
     display: flex;
   }
@@ -397,8 +538,8 @@ export default {
     left: -100%;
     width: 250px;
     height: calc(100vh - 70px);
-    background-color: white;
-    box-shadow: var(--box-shadow);
+    background: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     transition: var(--transition);
     z-index: 100;
   }
@@ -426,25 +567,30 @@ export default {
     background-color: #f5f5f5;
   }
   
-  .header__nav a.btn {
-    display: block;
-    text-align: center;
-    margin: 0.5rem 2rem;
-  }
-}
-
-@media (max-width: 576px) {
-  .user-name {
-    display: none;
-  }
-  
   .notifications-dropdown {
     width: 300px;
     right: -140px;
   }
 }
 
-.cursor-pointer {
-  cursor: pointer;
+@media (max-width: 576px) {
+  .header {
+    top: 0.5rem;
+    width: 95%;
+    padding: 0.2rem 0;
+  }
+  
+  .header__title {
+    display: none;
+  }
+  
+  .user-info {
+    display: none;
+  }
+  
+  .notifications-dropdown {
+    width: 280px;
+    right: -160px;
+  }
 }
 </style> 
