@@ -927,7 +927,7 @@ export default defineComponent({
 <style scoped>
 .edit-course {
   padding: 2rem;
-  background-color: #f8f9fa;
+  background-color: #f3f4f6;
   min-height: 100vh;
 }
 
@@ -938,14 +938,20 @@ export default defineComponent({
 
 .course-header {
   background: white;
-  border-radius: var(--border-radius);
-  padding: 2rem;
+  border-radius: 24px;
+  padding: 2.5rem;
   margin-bottom: 2rem;
-  box-shadow: var(--box-shadow);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 2rem;
+  transition: all 0.3s ease;
+}
+
+.course-header:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .course-info {
@@ -956,7 +962,109 @@ export default defineComponent({
 .course-description-wrapper {
   position: relative;
   width: 100%;
+  margin-bottom: 2rem;
+}
+
+.course-title-wrapper label,
+.course-description-wrapper label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 0.75rem;
+  transition: color 0.3s ease;
+}
+
+.course-title-input {
+  width: 100%;
+  font-size: 1.75rem;
+  font-weight: bold;
+  border: none;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 0.75rem 0;
+  transition: all 0.3s ease;
+  background: transparent;
+  color: #1f2937;
+}
+
+.course-title-input:focus {
+  outline: none;
+  border-bottom-color: var(--primary-color);
+}
+
+.course-description-input {
+  width: 100%;
+  min-height: 120px;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1rem;
+  resize: vertical;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+  color: #1f2937;
+}
+
+.course-description-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.course-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+}
+
+.content-panel,
+.stats-panel {
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.content-panel:hover,
+.stats-panel:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.75rem;
+  background: white;
+  color: #4b5563;
+  border: none;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
   margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.back-btn:hover {
+  background: #f9fafb;
+  transform: translateX(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  color: var(--primary-color);
+}
+
+.back-btn i {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+}
+
+.back-btn:hover i {
+  transform: translateX(-3px);
 }
 
 .course-title-wrapper label,
@@ -1661,30 +1769,6 @@ textarea.form-input {
   transform: rotate(90deg) scale(1.1);
 }
 
-.back-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #f8f9fa;
-  color: var(--text-color);
-  border: none;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  margin-bottom: 1rem;
-}
-
-.back-btn:hover {
-  background: #e9ecef;
-  transform: translateX(-5px);
-}
-
-.back-btn i {
-  font-size: 1rem;
-}
-
 .notification {
   position: fixed;
   top: 20px;
@@ -2127,4 +2211,4 @@ textarea.form-input {
 .compact-file-preview .file-info i.fa-file {
   color: #64748b;
 }
-</style> 
+</style>
