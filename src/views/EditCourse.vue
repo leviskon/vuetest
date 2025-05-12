@@ -38,13 +38,18 @@
               <i class="fas fa-pencil-alt"></i>
             </div>
           </div>
-          <v-text-field
-            v-model="course.category"
-            label="Категория"
-            :value="formatCategory(course.category)"
-            readonly
-            disabled
-          ></v-text-field>
+          <div class="form-group">
+            <label>Категория</label>
+            <v-text-field
+              v-model="course.category"
+              :value="formatCategory(course.category)"
+              variant="outlined"
+              readonly
+              disabled
+              density="comfortable"
+              class="category-field"
+            ></v-text-field>
+          </div>
         </div>
         <div class="course-actions">
           <template v-if="!isEditingCourse">
@@ -657,10 +662,12 @@ export default defineComponent({
     },
     getFileType(fileName) {
       const extension = fileName.split('.').pop().toLowerCase();
-      const type = this.materialTypes.find(type => 
-        type.extensions.includes(extension)
-      );
-      return type ? type.id : 1; // По умолчанию видео
+      // Если это видео-расширение, возвращаем тип видео
+      if (['mp4', 'avi', 'mov', 'wmv'].includes(extension)) {
+          return 1; // Видео
+      }
+      // Все остальные файлы считаем документами
+      return 2; // Документ
     },
     handleFileUpload(event) {
       const files = Array.from(event.target.files);
