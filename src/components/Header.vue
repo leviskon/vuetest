@@ -34,17 +34,44 @@
               <h3>Уведомления</h3>
               <button class="clear-all" @click="clearNotifications">Очистить все</button>
             </div>
-            <div v-if="notifications.length === 0" class="empty-notifications">
+            <div v-if="isLoadingNotifications" class="notifications-loading">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Загрузка уведомлений...</p>
+            </div>
+            <div v-else-if="notifications.length === 0" class="empty-notifications">
               <i class="fas fa-bell-slash"></i>
               <p>У вас нет новых уведомлений</p>
             </div>
             <div v-else class="notifications-list">
-              <div v-for="(notification, index) in notifications" :key="index" class="notification-item">
+              <div v-for="(notification, index) in notifications" :key="notification.id || index" class="notification-item">
                 <div class="notification-content">
-                  <h4>{{ notification.title }}</h4>
+                  <div class="notification-header">
+                    <h4>{{ notification.title }}</h4>
+                    <button 
+                      class="delete-btn"
+                      @click="handleDeleteNotification(notification.id)"
+                      title="Удалить уведомление"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
                   <p>{{ notification.message }}</p>
+                  <div v-if="isTeacher && notification.type === 'ACCESS_REQUEST'" class="notification-actions">
+                    <button 
+                      class="action-btn approve" 
+                      @click="handleApproveAccess(notification)"
+                    >
+                      <i class="fas fa-check"></i> Одобрить
+                    </button>
+                    <button 
+                      class="action-btn reject" 
+                      @click="handleRejectAccess(notification)"
+                    >
+                      <i class="fas fa-times"></i> Отклонить
+                    </button>
+                  </div>
                 </div>
-                <div class="notification-time">{{ notification.time }}</div>
+                <div class="notification-time">{{ notification.createdAt ? new Date(notification.createdAt).toLocaleString() : '' }}</div>
               </div>
             </div>
           </div>
@@ -79,6 +106,8 @@
 
 <script>
 import { authService } from '@/services/authService';
+import { notificationService } from '@/services/notificationService';
+import { courseEnrollmentService } from '@/services/courseEnrollmentService';
 
 export default {
   name: 'Header',
@@ -91,28 +120,11 @@ export default {
         name: '',
         avatar: '/images/student_icon.png',
         email: '',
-        role: null
+        role: null,
+        id: null
       },
-      notifications: [
-        {
-          id: 1,
-          title: 'Новое задание',
-          message: 'Вам назначено новое задание по курсу "Веб-разработка"',
-          time: '1 час назад'
-        },
-        {
-          id: 2,
-          title: 'Дедлайн приближается',
-          message: 'Осталось 2 дня до сдачи проекта по курсу "Python для начинающих"',
-          time: '3 часа назад'
-        },
-        {
-          id: 3,
-          title: 'Оценка за тест',
-          message: 'Ваша работа по UX/UI дизайну оценена на 95 баллов',
-          time: '5 часов назад'
-        }
-      ]
+      notifications: [],
+      isLoadingNotifications: false
     }
   },
   computed: {
@@ -124,8 +136,11 @@ export default {
     toggleMenu() {
       this.isMenuOpen = !this.isMenuOpen;
     },
-    toggleNotifications() {
+    async toggleNotifications() {
+      console.log('=== Переключение отображения уведомлений ===');
       this.showNotifications = !this.showNotifications;
+      console.log('Состояние отображения:', this.showNotifications);
+      
       if (this.showNotifications) {
         this.showUserMenu = false;
       }
@@ -136,9 +151,55 @@ export default {
         this.showNotifications = false;
       }
     },
-    clearNotifications() {
-      this.notifications = [];
-      this.showNotifications = false;
+    async loadNotifications() {
+      try {
+        console.log('=== Начало загрузки уведомлений ===');
+        console.log('Текущий пользователь:', this.user);
+        
+        this.isLoadingNotifications = true;
+        console.log('Отправка запроса на получение уведомлений...');
+        
+        const allNotifications = await notificationService.getUserNotifications();
+        console.log('Получены уведомления от сервера:', allNotifications);
+        
+        console.log('Фильтрация уведомлений для пользователя ID:', this.user.id);
+        this.notifications = allNotifications.filter(n => {
+          console.log('Проверка уведомления:', {
+            notificationId: n.id,
+            toUserId: n.toUserId,
+            currentUserId: this.user.id,
+            matches: n.toUserId === this.user.id
+          });
+          return n.toUserId === this.user.id;
+        });
+        
+        console.log('Отфильтрованные уведомления:', this.notifications);
+      } catch (e) {
+        console.error('=== Ошибка при загрузке уведомлений ===');
+        console.error('Тип ошибки:', e.name);
+        console.error('Сообщение ошибки:', e.message);
+        console.error('Детали ошибки:', e.response?.data);
+        this.notifications = [];
+      } finally {
+        this.isLoadingNotifications = false;
+        console.log('=== Завершение загрузки уведомлений ===');
+      }
+    },
+    async clearNotifications() {
+      try {
+        console.log('=== Начало очистки уведомлений ===');
+        await notificationService.markAllAsRead();
+        console.log('Уведомления помечены как прочитанные');
+        
+        await this.loadNotifications();
+        this.showNotifications = false;
+        console.log('=== Уведомления успешно очищены ===');
+      } catch (e) {
+        console.error('=== Ошибка при очистке уведомлений ===');
+        console.error('Тип ошибки:', e.name);
+        console.error('Сообщение ошибки:', e.message);
+        console.error('Детали ошибки:', e.response?.data);
+      }
     },
     async logout() {
       await authService.logout();
@@ -153,19 +214,122 @@ export default {
       this.isMenuOpen = false;
     },
     loadUserData() {
-      const currentUser = authService.getCurrentUser()
+      console.log('=== Загрузка данных пользователя ===');
+      const currentUser = authService.getCurrentUser();
+      console.log('Данные текущего пользователя:', currentUser);
+      
       if (currentUser) {
         this.user = {
           name: currentUser.name || '',
           avatar: currentUser.avatarUrl || '/images/student_icon.png',
           email: currentUser.email || '',
-          role: currentUser.role || null
+          role: currentUser.role || null,
+          id: currentUser.id || null
         }
+        console.log('Установленные данные пользователя:', this.user);
+      } else {
+        console.log('Пользователь не авторизован');
+      }
+    },
+    async handleApproveAccess(notification) {
+      try {
+        console.log('=== Начало обработки одобрения доступа ===');
+        console.log('Данные уведомления:', {
+          notificationId: notification.id,
+          courseId: notification.courseId,
+          userId: notification.userId,
+          title: notification.title
+        });
+        
+        if (!notification.courseId || !notification.userId) {
+          throw new Error('Отсутствуют необходимые данные: courseId или userId');
+        }
+
+        // Сначала зачисляем студента на курс
+        await courseEnrollmentService.enrollStudent(
+          notification.courseId,
+          notification.userId
+        );
+
+        console.log('Студент успешно зачислен на курс');
+
+        // Отправляем уведомление студенту об одобрении
+        await notificationService.sendAccessApproved(
+          notification.courseId,
+          this.user.id,
+          notification.userId,
+          notification.title.split(' запрашивает доступ к курсу')[0]
+        );
+
+        console.log('Уведомление об одобрении отправлено');
+
+        // Удаляем исходное уведомление
+        await notificationService.deleteNotification(notification.id);
+        console.log('Исходное уведомление удалено');
+
+        // Обновляем список уведомлений
+        await this.loadNotifications();
+        
+        console.log('=== Завершение обработки одобрения доступа ===');
+      } catch (error) {
+        console.error('=== Ошибка при одобрении доступа ===');
+        console.error('Тип ошибки:', error.name);
+        console.error('Сообщение ошибки:', error.message);
+        console.error('Детали ошибки:', error.response?.data);
+      }
+    },
+    async handleRejectAccess(notification) {
+      try {
+        console.log('=== Начало обработки отклонения доступа ===');
+        
+        // Отправляем уведомление студенту об отказе
+        await notificationService.sendAccessRejected(
+          notification.courseId,
+          this.user.id,
+          notification.userId,
+          notification.title.split(' запрашивает доступ к курсу')[0]
+        );
+
+        console.log('Уведомление об отказе отправлено');
+
+        // Удаляем исходное уведомление
+        await notificationService.deleteNotification(notification.id);
+        console.log('Исходное уведомление удалено');
+
+        // Обновляем список уведомлений
+        await this.loadNotifications();
+        
+        console.log('=== Завершение обработки отклонения доступа ===');
+      } catch (error) {
+        console.error('=== Ошибка при отклонении доступа ===');
+        console.error('Тип ошибки:', error.name);
+        console.error('Сообщение ошибки:', error.message);
+        console.error('Детали ошибки:', error.response?.data);
+      }
+    },
+    async handleDeleteNotification(id) {
+      try {
+        console.log('=== Начало удаления уведомления ===');
+        console.log('ID уведомления:', id);
+        
+        await notificationService.deleteNotification(id);
+        console.log('Уведомление успешно удалено');
+        
+        // Обновляем список уведомлений
+        await this.loadNotifications();
+        
+        console.log('=== Завершение удаления уведомления ===');
+      } catch (error) {
+        console.error('=== Ошибка при удалении уведомления ===');
+        console.error('Тип ошибки:', error.name);
+        console.error('Сообщение ошибки:', error.message);
+        console.error('Детали ошибки:', error.response?.data);
       }
     }
   },
   mounted() {
-    this.loadUserData()
+    this.loadUserData();
+    this.loadNotifications();
   }
 }
 </script>
@@ -373,16 +537,82 @@ export default {
   background-color: #f8f9fa;
 }
 
-.notification-content h4 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1rem;
-  color: var(--text-color);
+.notification-content {
+  position: relative;
 }
 
-.notification-content p {
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.notification-header h4 {
   margin: 0;
-  font-size: 0.9rem;
+  flex: 1;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
   color: #6c757d;
+  padding: 0.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background-color: #f8f9fa;
+  color: #dc3545;
+}
+
+.delete-btn i {
+  font-size: 0.9rem;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.action-btn.approve {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.action-btn.approve:hover {
+  background-color: #45a049;
+}
+
+.action-btn.reject {
+  background-color: #f44336;
+  color: white;
+}
+
+.action-btn.reject:hover {
+  background-color: #da190b;
+}
+
+.action-btn i {
+  font-size: 0.9rem;
 }
 
 .notification-time {
@@ -592,5 +822,22 @@ export default {
     width: 280px;
     right: -160px;
   }
+}
+
+.notifications-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+}
+
+.notifications-loading i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+.notifications-loading p {
+  margin: 0;
+  font-size: 0.9rem;
 }
 </style> 

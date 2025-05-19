@@ -32,6 +32,7 @@ import AssignmentsSection from '@/components/AssignmentsSection.vue'
 import CalendarSection from '@/components/CalendarSection.vue'
 import Footer from '@/components/Footer.vue'
 import { authService } from '@/services/authService'
+import { courseService } from '@/services/courseService'
 
 export default {
   name: 'StudentDashboard',
@@ -51,29 +52,7 @@ export default {
         avatar: '/images/student_icon.png',
         email: ''
       },
-      enrolledCourses: [
-        {
-          id: 1,
-          title: 'Веб-разработка',
-          description: 'HTML, CSS и JavaScript с нуля до профессионала',
-          image: '/images/web-dev.jpg',
-          progress: 65
-        },
-        {
-          id: 2,
-          title: 'Python для начинающих',
-          description: 'Основы программирования на Python',
-          image: '/images/python.jpg',
-          progress: 40
-        },
-        {
-          id: 3,
-          title: 'UX/UI Дизайн',
-          description: 'Создавайте современные интерфейсы',
-          image: '/images/uxui.png',
-          progress: 85
-        }
-      ],
+      enrolledCourses: [],
       currentAssignments: [
         {
           id: 1,
@@ -125,7 +104,7 @@ export default {
       ]
     }
   },
-  created() {
+  async created() {
     const currentUser = authService.getCurrentUser()
     if (currentUser) {
       this.user = {
@@ -133,6 +112,13 @@ export default {
         name: currentUser.name,
         avatar: currentUser.avatarUrl || '/images/student_icon.png',
         email: currentUser.email
+      }
+      
+      // Загружаем курсы студента
+      try {
+        this.enrolledCourses = await courseService.getEnrolledCourses()
+      } catch (error) {
+        console.error('Ошибка при загрузке курсов:', error)
       }
     }
   },

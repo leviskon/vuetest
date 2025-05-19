@@ -71,8 +71,8 @@
                 <span class="course-duration">{{ course.totalStudents }} студентов</span>
               </div>
               <div class="course-card__footer">
-                <button class="btn btn-primary" @click="$router.push(`/course/${course.id}`)">
-                  Подробнее
+                <button class="btn btn-primary" @click="requestCourseAccess(course)">
+                  Получить доступ к курсу
                 </button>
               </div>
             </div>
@@ -88,6 +88,8 @@
 <script>
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { notificationService } from '@/services/notificationService'
+import { authService } from '@/services/authService'
 
 export default {
   name: 'AllCourses',
@@ -248,6 +250,29 @@ export default {
     },
     filterCourses() {
       // Метод для дополнительной логики фильтрации, если потребуется
+    },
+    async requestCourseAccess(course) {
+      try {
+        const student = authService.getCurrentUser();
+        if (!student) {
+          alert('Необходимо войти в систему');
+          return;
+        }
+        // Предполагается, что у курса есть поле teacherId
+        const notification = {
+          userId: student.id,
+          toUserId: course.userId,
+          courseId: course.id,
+          title: `${student.name} запрашивает доступ к курсу`,
+          message: `Пользователь ${student.name} (${student.email}) хочет получить доступ к курсу "${course.name}"`,
+          type: 'ACCESS_REQUEST'
+        };
+        await notificationService.createNotification(notification);
+        alert('Запрос на доступ отправлен преподавателю!');
+      } catch (error) {
+        alert('Ошибка при отправке запроса на доступ');
+        console.error(error);
+      }
     }
   },
   mounted() {

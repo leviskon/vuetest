@@ -17,6 +17,24 @@ const vuetify = createVuetify({
 
 const app = createApp(App)
 
+// Глобальная обработка ошибок
+app.config.errorHandler = (err, vm, info) => {
+  console.error('Глобальная ошибка:', err)
+  console.error('Информация об ошибке:', info)
+}
+
+// Обработка необработанных Promise rejections
+window.addEventListener('unhandledrejection', event => {
+  console.error('Необработанная ошибка Promise:', event.reason)
+  event.preventDefault()
+})
+
 app.use(router)
 app.use(vuetify) // Используем Vuetify
+
+// Обработка ошибок маршрутизации
+router.onError((error) => {
+  console.error('Ошибка маршрутизации:', error)
+})
+
 app.mount('#app')

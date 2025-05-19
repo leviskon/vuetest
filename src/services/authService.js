@@ -12,6 +12,26 @@ const api = axios.create({
     withCredentials: true
 });
 
+// Добавляем перехватчик для обработки ошибок
+api.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response) {
+            // Сервер ответил с ошибкой
+            console.error('Ошибка ответа сервера:', error.response.data);
+            return Promise.reject(error.response.data);
+        } else if (error.request) {
+            // Запрос был отправлен, но ответ не получен
+            console.error('Ошибка запроса:', error.request);
+            return Promise.reject(new Error('Сервер недоступен'));
+        } else {
+            // Ошибка при настройке запроса
+            console.error('Ошибка:', error.message);
+            return Promise.reject(error);
+        }
+    }
+);
+
 const processUserData = (userData) => {
     if (userData.avatarUrl) {
         // Проверяем, начинается ли URL с http:// или https://
@@ -47,14 +67,7 @@ export const authService = {
         } catch (error) {
             console.error('=== Ошибка при входе ===');
             console.error('Ошибка:', error);
-            if (error.response) {
-                console.error('Ответ сервера с ошибкой:', error.response.data);
-                throw new Error(typeof error.response.data === 'string' ? error.response.data : 'Ошибка при входе в систему');
-            } else if (error.request) {
-                throw new Error('Сервер недоступен. Проверьте подключение к интернету');
-            } else {
-                throw new Error('Ошибка при отправке запроса');
-            }
+            throw error;
         }
     },
 
@@ -82,14 +95,7 @@ export const authService = {
         } catch (error) {
             console.error('=== Ошибка при регистрации ===');
             console.error('Ошибка:', error);
-            if (error.response) {
-                console.error('Ответ сервера с ошибкой:', error.response.data);
-                throw new Error(typeof error.response.data === 'string' ? error.response.data : 'Ошибка при регистрации');
-            } else if (error.request) {
-                throw new Error('Сервер недоступен. Проверьте подключение к интернету');
-            } else {
-                throw new Error('Ошибка при отправке запроса');
-            }
+            throw error;
         }
     },
 
@@ -100,23 +106,29 @@ export const authService = {
         } catch (error) {
             console.error('Ошибка при выходе:', error);
             localStorage.removeItem('user');
+            throw error;
         }
     },
 
     getCurrentUser() {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user) {
+        try {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) {
+                return null;
+            }
+            
+            if (user.role) {
+                if (typeof user.role === 'object' && user.role.name) {
+                    user.role = user.role.name;
+                }
+                user.role = String(user.role).toUpperCase();
+            }
+            
+            return user;
+        } catch (error) {
+            console.error('Ошибка при получении текущего пользователя:', error);
             return null;
         }
-        
-        if (user.role) {
-            if (typeof user.role === 'object' && user.role.name) {
-                user.role = user.role.name;
-            }
-            user.role = String(user.role).toUpperCase();
-        }
-        
-        return user;
     },
 
     isAuthenticated() {
