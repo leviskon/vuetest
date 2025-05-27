@@ -31,14 +31,21 @@
           </div>
           <div class="course-progress">
             <div class="progress-bar">
-              <div class="progress" :style="{ width: course.progress + '%' }"></div>
+              <div class="progress" :style="{ width: progressPercentage + '%' }"></div>
             </div>
-            <span class="progress-text">{{ course.progress }}% завершено</span>
+            <span class="progress-text">{{ progressPercentage }}% завершено</span>
           </div>
         </div>
         
         <div class="course-content">
-          <CourseMaterials :courseId="courseId" />
+          <CourseMaterials 
+            ref="courseMaterialsRef"
+            :courseId="courseId"
+            :studentId="studentId"
+            :initialCompletedMaterialIds="completedMaterialIds"
+            @material-completed="handleMaterialCompleted"
+            @materials-loaded="handleMaterialsLoaded"
+          />
         </div>
       </div>
     </main>
@@ -52,6 +59,8 @@ import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import CourseMaterials from '@/components/CourseMaterials.vue'
 import { courseService } from '@/services/api'
+import { authService } from '@/services/authService'
+import { materialService } from '@/services/api'
 
 export default {
   name: 'CourseView',
@@ -64,17 +73,40 @@ export default {
     return {
       course: null,
       loading: true,
-      error: null
+      error: null,
+      studentId: null,
+      completedMaterialIds: new Set(),
+      totalMaterials: 0,
+      currentProgress: 0
     }
   },
   computed: {
     courseId() {
       return parseInt(this.$route.params.id)
+    },
+    progressPercentage() {
+      if (this.totalMaterials === 0) return 0;
+      
+      const completedCount = this.completedMaterialIds.size;
+
+      console.log('progressPercentage (обновленный):', { completedCount, totalMaterials: this.totalMaterials });
+
+      return Math.round((completedCount / this.totalMaterials) * 100);
     }
   },
   created() {
     console.log('CourseView created, courseId:', this.courseId)
-    this.loadCourse()
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      this.studentId = currentUser.id;
+    } else {
+      this.$router.push('/login');
+      return;
+    }
+
+    this.loadCourse().then(() => {
+      this.loadCourseProgress();
+    });
   },
   methods: {
     async loadCourse() {
@@ -84,6 +116,7 @@ export default {
         const course = await courseService.getCourseById(this.courseId)
         console.log('Курс успешно загружен:', course)
         this.course = course
+        this.totalMaterials = course.materials ? course.materials.length : 0;
       } catch (error) {
         console.error('Ошибка при загрузке курса:', error)
         this.error = 'Не удалось загрузить информацию о курсе'
@@ -91,6 +124,102 @@ export default {
         this.loading = false
         console.log('Загрузка курса завершена, loading:', this.loading)
       }
+    },
+    async loadCourseProgress() {
+      if (!this.studentId || !this.courseId) return;
+      try {
+        console.log(`Загрузка прогресса для студента ${this.studentId} и курса ${this.courseId}`);
+        const response = await fetch(`http://localhost:8080/api/course-progress/student/${this.studentId}/course/${this.courseId}`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log('Прогресс для студента и курса не найден.');
+            this.completedMaterialIds = new Set();
+             this.$nextTick(() => {
+              if (this.$refs.courseMaterialsRef) {
+                this.$refs.courseMaterialsRef.updateCompletedMaterials(this.completedMaterialIds);
+              }
+            });
+            return;
+          }
+          throw new Error(`Ошибка при загрузке прогресса: ${response.status} ${response.statusText}`);
+        }
+
+        const progressData = await response.json();
+        console.log('Получены данные прогресса:', progressData);
+        
+        // Ожидаем массив ID пройденных материалов в поле completedMaterials
+        if (progressData && Array.isArray(progressData.completedMaterials)) {
+           this.completedMaterialIds = new Set(progressData.completedMaterials);
+           console.log('Обновлен completedMaterialIds на основе массива completedMaterials:', Array.from(this.completedMaterialIds));
+        } else {
+           // Если данные не в ожидаемом формате, сбрасываем
+          this.completedMaterialIds = new Set();
+           console.log('completedMaterialIds установлен как пустой Set (неожиданный формат данных completedMaterials)');
+        }
+        
+         // Обновляем компонент CourseMaterials с актуальными пройденными материалами
+        this.$nextTick(() => {
+          if (this.$refs.courseMaterialsRef) {
+            this.$refs.courseMaterialsRef.updateCompletedMaterials(this.completedMaterialIds);
+            console.log('Вызван updateCompletedMaterials в CourseMaterials');
+          }
+        });
+
+      } catch (error) {
+        console.error('Ошибка при загрузке прогресса:', error);
+      }
+    },
+    async updateCourseProgress(materialId) {
+      if (!this.studentId || !this.courseId || !materialId) return;
+      
+      if (this.completedMaterialIds.has(materialId)) {
+        console.log(`Материал ${materialId} уже отмечен как пройденный.`);
+        return;
+      }
+      
+      // Сначала добавим материал локально для быстрого обновления UI
+      this.completedMaterialIds.add(materialId);
+      
+      try {
+        // Подготавливаем данные для запроса
+        const requestData = {
+          studentId: this.studentId,
+          courseId: this.courseId,
+          completedMaterials: Array.from(this.completedMaterialIds)
+        };
+
+        console.log('Отправляем запрос на отметку материала:', requestData);
+
+        const progressResponse = await fetch('http://localhost:8080/api/course-progress', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        if (!progressResponse.ok) {
+          const errorText = await progressResponse.text();
+          throw new Error(`Ошибка при обновлении прогресса: ${progressResponse.status} ${progressResponse.statusText} - ${errorText}`);
+        }
+
+        console.log('Прогресс успешно обновлен на сервере.');
+      } catch (error) {
+        console.error('Ошибка при отправке прогресса:', error);
+        this.completedMaterialIds.delete(materialId);
+        throw error;
+      }
+    },
+    async handleMaterialCompleted(materialId) {
+      await this.loadCourseProgress();
+    },
+    handleMaterialsLoaded(total) {
+      console.log('CourseView: Материалы загружены в CourseMaterials, общее количество:', total);
+      this.totalMaterials = total;
     }
   }
 }

@@ -19,9 +19,24 @@
       <div v-for="material in materials" :key="material.id" class="material-card">
         <div class="material-header">
           <h3>{{ material.title }}</h3>
-          <span class="material-type" :class="getTypeClass(material.type.id)">
-            {{ getTypeName(material.type.id) }}
-          </span>
+          <div class="material-header-actions">
+            <span class="material-type" :class="getTypeClass(material.type.id)">
+              {{ getTypeName(material.type.id) }}
+            </span>
+            <button 
+              v-if="!isMaterialCompleted(material.id)"
+              @click="markMaterialAsCompleted(material.id)"
+              class="complete-btn"
+              title="Отметить как пройденный"
+            >
+              <i class="fas fa-check"></i>
+              Отметить как пройденный
+            </button>
+            <span v-else class="completed-badge">
+              <i class="fas fa-check-circle"></i>
+              Пройдено
+            </span>
+          </div>
         </div>
         
         <p class="material-description">{{ material.description }}</p>
@@ -111,6 +126,14 @@ export default {
     courseId: {
       type: Number,
       required: true
+    },
+    studentId: {
+      type: Number,
+      required: true
+    },
+    initialCompletedMaterialIds: {
+      type: Set,
+      default: () => new Set()
     }
   },
   data() {
@@ -118,15 +141,21 @@ export default {
       materials: [],
       loading: true,
       error: null,
-      materialUrls: {} // Для хранения URL-ов объектов
+      materialUrls: {},
+      completedMaterialIds: new Set()
     }
   },
   created() {
     console.log('CourseMaterials created, courseId:', this.courseId)
     this.loadMaterials()
+    this.completedMaterialIds = new Set(this.initialCompletedMaterialIds)
+  },
+  watch: {
+    initialCompletedMaterialIds(newVal) {
+      this.completedMaterialIds = new Set(newVal)
+    }
   },
   beforeUnmount() {
-    // Очищаем все URL при размонтировании компонента
     Object.values(this.materialUrls).forEach(url => {
       URL.revokeObjectURL(url)
     })
@@ -139,7 +168,6 @@ export default {
         const materials = await materialService.getCourseMaterials(this.courseId)
         console.log('Материалы успешно загружены:', materials)
 
-        // Обработка материалов для добавления файлов и URL
         this.materials = materials.map(material => ({
           ...material,
           files: material.url ? JSON.parse(material.url).map((url, index) => ({
@@ -148,29 +176,25 @@ export default {
             contentType: this.getContentTypeFromUrl(url),
             index: index
           })) : [],
-          fileUrl: null, // URL для отображения файла (например, видео или PDF)
-          currentFileIndex: 0 // Индекс текущего отображаемого файла
+          fileUrl: null,
+          currentFileIndex: 0
         }))
 
-        // Для материалов с типом DOCUMENT (id=2), пытаемся сразу загрузить первый PDF
-        // Для материалов с типом VIDEO (id=1), пытаемся сразу загрузить первое видео
-         this.materials.forEach(async material => {
+        this.materials.forEach(async material => {
             if (material.type.id === 2) {
                 const firstPdfIndex = material.files.findIndex(file =>
                     this.isPdfFile(file.name)
                 );
                 if (firstPdfIndex !== -1) {
                     await this.displayMaterial(material, firstPdfIndex);
-                } else if (material.files.length > 0) {
-                     // Если нет PDF, но есть другие файлы, можно загрузить первый как ссылку
-                     // Для этого не нужно вызывать displayMaterial, только убедиться, что files корректно заполнен
                 }
             } else if (material.type.id === 1 && material.files.length > 0) {
-                 // Автоматическая загрузка первого видео файла
                  await this.displayMaterial(material, 0);
             }
         });
 
+        // После загрузки материалов, эмитим их общее количество
+        this.$emit('materials-loaded', this.materials.length);
 
       } catch (error) {
         console.error('Ошибка при загрузке материалов:', error)
@@ -242,8 +266,8 @@ export default {
     },
     getTypeClass(typeId) {
       const classes = {
-        1: 'type-lecture', // Можно использовать тот же класс для видео для визуальной консистентности
-        2: 'type-practice', // Используем этот класс для документов
+        1: 'type-lecture',
+        2: 'type-practice',
         3: 'type-homework',
         4: 'type-additional'
       }
@@ -263,16 +287,14 @@ export default {
 
         const file = material.files[fileIndex];
 
-        // Очищаем старый URL, если он есть
         if (this.materialUrls[material.id]) {
           URL.revokeObjectURL(this.materialUrls[material.id]);
         }
 
-        // Загружаем файл через API
         const response = await fetch(`http://localhost:8080/api/materials/${material.id}/file/${fileIndex}`, {
           credentials: 'include',
            headers: {
-            'Accept': file.contentType || 'application/octet-stream' // Используем MIME тип файла
+            'Accept': file.contentType || 'application/octet-stream'
           }
         });
 
@@ -283,7 +305,6 @@ export default {
         const blob = await response.blob();
         const fileUrl = URL.createObjectURL(blob);
 
-        // Находим материал в массиве и обновляем его реактивно
         const materialToUpdate = this.materials.find(m => m.id === material.id);
         if (materialToUpdate) {
           materialToUpdate.fileUrl = fileUrl;
@@ -295,7 +316,6 @@ export default {
 
       } catch (error) {
         console.error('Ошибка при загрузке файла:', error);
-        // Обработка ошибок, возможно, установка флага ошибки на материале
       }
     },
     async downloadMaterial(materialId, fileIndex) {
@@ -318,7 +338,7 @@ export default {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = file.name; // Используем оригинальное имя файла
+        a.download = file.name;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -326,7 +346,60 @@ export default {
 
       } catch (error) {
         console.error('Ошибка при загрузке файла:', error);
-        // Обработка ошибок
+      }
+    },
+    updateCompletedMaterials(completedIdsSet) {
+      console.log('CourseMaterials: updateCompletedMaterials called with', completedIdsSet);
+      this.completedMaterialIds = new Set(completedIdsSet);
+    },
+    
+    isMaterialCompleted(materialId) {
+      return this.completedMaterialIds.has(materialId);
+    },
+    
+    async markMaterialAsCompleted(materialId) {
+      if (this.isMaterialCompleted(materialId)) {
+        console.log(`Материал ${materialId} уже отмечен как пройденный.`);
+        return;
+      }
+
+      try {
+        const updatedCompletedIds = Array.from(new Set([...this.completedMaterialIds, materialId]));
+
+        const requestBody = {
+          studentId: this.studentId,
+          courseId: this.courseId,
+          completedMaterials: updatedCompletedIds
+        };
+
+        console.log('Отправляем запрос на отметку материала (новый формат):', requestBody);
+
+        const response = await fetch('http://localhost:8080/api/course-progress', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        console.log('Получен ответ на отметку материала:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Текст ошибки:', errorText);
+          throw new Error(`Ошибка при отметке материала как пройденного: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        console.log('Материал успешно отмечен на сервере, эмитим material-completed');
+        this.$emit('material-completed', materialId);
+
+      } catch (error) {
+        console.error('Ошибка при отметке материала как пройденного:', error);
       }
     }
   }
@@ -396,6 +469,12 @@ export default {
   margin: 0;
   font-size: 1.25rem;
   color: #333;
+}
+
+.material-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .material-type {
@@ -571,5 +650,38 @@ export default {
   border: none;
   background: white;
   display: block;
+}
+
+.complete-btn {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.complete-btn:hover {
+  background: var(--primary-color-dark);
+  transform: translateY(-1px);
+}
+
+.completed-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #28a745;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.completed-badge i {
+  font-size: 1.1rem;
 }
 </style> 

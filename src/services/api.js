@@ -262,12 +262,12 @@ export const materialService = {
 
     async getCourseMaterials(courseId) {
         try {
-            const fullUrl = `${API_URL}/materials/course/${courseId}/with-files`;
-            console.log('=== Запрос материалов курса (с файлами) ===');
-            console.log('Полный URL:', fullUrl);
-            const response = await api.get(`/materials/course/${courseId}/with-files`);
+            console.log(`Запрос материалов для курса ID: ${courseId}`);
+            const response = await api.get(`/materials/course/${courseId}`);
+            console.log(`Материалы для курса ID ${courseId} получены:`, response.data);
             return response.data;
         } catch (error) {
+            console.error(`Ошибка при получении материалов для курса ID ${courseId}:`, error);
             if (error.response) {
                 const errorMessage = error.response.data;
                 throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Ошибка при получении материалов курса');

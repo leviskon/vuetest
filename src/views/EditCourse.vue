@@ -1022,6 +1022,18 @@ export default defineComponent({
     async unenrollStudent(studentId) {
       try {
         console.log(`Попытка удалить студента ID ${studentId} из курса ID ${this.course.id}`);
+        
+        // Удаляем прогресс студента по конкретному курсу
+        const progressResponse = await fetch(`http://localhost:8080/api/course-progress/student/${studentId}/course/${this.course.id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (!progressResponse.ok) {
+          console.warn(`Не удалось удалить прогресс студента: ${progressResponse.status} ${progressResponse.statusText}`);
+        }
+
+        // Затем удаляем студента из курса
         const response = await fetch(`http://localhost:8080/api/enrollments/students/${studentId}/unenroll?courseId=${this.course.id}`, {
           method: 'DELETE',
           credentials: 'include'
