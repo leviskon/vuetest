@@ -90,6 +90,7 @@ import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { notificationService } from '@/services/notificationService'
 import { authService } from '@/services/authService'
+import { courseService } from '@/services/courseService'
 
 export default {
   name: 'AllCourses',
@@ -107,12 +108,24 @@ export default {
       levels: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'],
       courses: [],
       isLoading: false,
-      error: null
+      error: null,
+      enrolledCourseIds: new Set()
     }
   },
   computed: {
     filteredCourses() {
       let filtered = [...this.courses];
+
+      // Исключаем курсы, на которые студент уже записан
+      console.log('Фильтрация: Записанные курсы (ID):', [...this.enrolledCourseIds]);
+      filtered = filtered.filter(course => {
+         const isEnrolled = this.enrolledCourseIds.has(course.id);
+         if(isEnrolled) {
+             console.log('Исключаем записанный курс:', course.id, course.name);
+         }
+         return !isEnrolled;
+      });
+      console.log('После фильтрации по записанным курсам:', filtered.length);
 
       // Поиск по названию
       if (this.searchQuery) {
@@ -273,10 +286,33 @@ export default {
         alert('Ошибка при отправке запроса на доступ');
         console.error(error);
       }
-    }
+    },
+    async loadEnrolledCourses() {
+      try {
+        const currentUser = authService.getCurrentUser();
+        if (currentUser && currentUser.id) {
+          console.log('Загрузка записанных курсов для пользователя ID:', currentUser.id);
+          // Используем getEnrolledCourses, которая возвращает объекты курсов
+          const enrolledCourses = await courseService.getEnrolledCourses();
+          console.log('Получены записанные курсы (объекты):', enrolledCourses);
+          
+          // Извлекаем только ID из объектов курсов и добавляем их в Set
+          this.enrolledCourseIds = new Set(enrolledCourses.map(course => course.id));
+          console.log('Заполнен enrolledCourseIds:', [...this.enrolledCourseIds]);
+        } else {
+          console.log('Пользователь не авторизован или нет ID, пропускаем загрузку записанных курсов.');
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке записанных курсов:', error);
+        // Можно добавить обработку ошибок или уведомление пользователя
+      }
+    },
   },
   mounted() {
-    this.loadCourses();
+    // Загружаем записанные курсы сначала, затем загружаем все курсы
+    this.loadEnrolledCourses().then(() => {
+      this.loadCourses();
+    });
   }
 }
 </script>

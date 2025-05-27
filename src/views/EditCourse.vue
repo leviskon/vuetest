@@ -245,18 +245,18 @@
             </div>
           </div>
 
-          <div class="students-progress">
-            <h3>Прогресс студентов</h3>
-            <div class="progress-list">
-              <div v-for="student in course.students" :key="student.id" class="student-progress">
+          <div class="enrolled-students">
+            <h3>Список студентов</h3>
+            <div class="students-list">
+              <div v-for="student in course.enrolledStudents" :key="student.id" class="student-item">
                 <div class="student-info">
-                  <img :src="student.avatar" :alt="student.name">
-                  <span>{{ student.name }}</span>
+                  <img :src="getImageUrl(student.avatarUrl)" :alt="student.name" class="student-avatar">
+                  <span class="student-name">{{ student.name }}</span>
                 </div>
-                <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: student.progress + '%' }"></div>
-                  <span class="progress-text">{{ student.progress }}%</span>
-                </div>
+                <span class="enrollment-date">{{ formatDate(student.enrollmentDate) }}</span>
+                <button @click="confirmUnenroll(student.id, student.name)" class="unenroll-btn" title="Удалить студента">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -416,7 +416,8 @@ export default defineComponent({
           averageProgress: 0,
           averageRating: 0
         },
-        students: []
+        students: [],
+        enrolledStudents: []
       },
       isEditingCourse: false,
       materialTypes: [
@@ -483,11 +484,14 @@ export default defineComponent({
           averageProgress: 0,
           averageRating: 0
         },
-        students: []
+        students: [],
+        enrolledStudents: []
       }
 
       // Загрузка материалов курса
       await this.loadCourseMaterials()
+      // Загрузка данных о записанных студентах
+      await this.loadEnrolledStudents()
     } catch (error) {
       console.error('Ошибка при загрузке курса:', error)
       console.error('Детали ошибки:', {
@@ -770,8 +774,6 @@ export default defineComponent({
         'xls': 'application/vnd.ms-excel',
         'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'mp4': 'video/mp4',
-        'avi': 'video/x-msvideo',
-        'mov': 'video/quicktime',
         'jpg': 'image/jpeg',
         'jpeg': 'image/jpeg',
         'png': 'image/png',
@@ -927,6 +929,126 @@ export default defineComponent({
     cancelEditingCourse() {
       this.isEditingCourse = false;
     },
+    async loadEnrolledStudents() {
+      try {
+        // Загружаем данные о зачислениях
+        const enrollmentsResponse = await fetch('http://localhost:8080/api/enrollments', {
+          credentials: 'include'
+        });
+        
+        if (!enrollmentsResponse.ok) {
+          throw new Error('Ошибка при загрузке данных о зачислениях');
+        }
+        
+        const enrollments = await enrollmentsResponse.json();
+        
+        // Фильтруем зачисления для текущего курса
+        const courseEnrollments = enrollments.filter(
+          enrollment => enrollment.courseId === this.course.id
+        );
+        
+        // Загружаем данные о пользователях
+        const usersResponse = await fetch('http://localhost:8080/api/auth/users', {
+          credentials: 'include'
+        });
+        
+        if (!usersResponse.ok) {
+          throw new Error('Ошибка при загрузке данных о пользователях');
+        }
+        
+        const users = await usersResponse.json();
+        
+        // Создаем массив студентов, записанных на курс
+        this.course.enrolledStudents = courseEnrollments
+          .map(enrollment => {
+            const student = users.find(user => user.id === enrollment.studentId);
+            if (student) {
+              console.log('Обработка студента:', student.name, ', Avatar URL:', student.avatarUrl, ', Дата зачисления:', enrollment.enrolledAt);
+            }
+            return student ? {
+              id: student.id,
+              name: student.name,
+              avatarUrl: student.avatarUrl,
+              enrollmentDate: enrollment.enrolledAt
+            } : null;
+          })
+          .filter(student => student !== null);
+        
+        // Обновляем количество активных студентов
+        this.course.stats.activeStudents = this.course.enrolledStudents.length;
+        
+      } catch (error) {
+        console.error('Ошибка при загрузке данных о студентах:', error);
+        this.notificationMessage = 'Не удалось загрузить данные о студентах';
+        this.showNotification = true;
+      }
+    },
+    formatDate(dateString) {
+      console.log('Форматирование даты, входная строка:', dateString);
+      if (!dateString) {
+         console.log('Входная строка даты пуста или null');
+         return 'Неизвестная дата';
+      }
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+           console.error('Не удалось распарсить дату:', dateString);
+           return 'Неверная дата';
+        }
+        return date.toLocaleDateString('ru-RU', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch (e) {
+         console.error('Ошибка при форматировании даты:', dateString, e);
+         return 'Ошибка формата даты';
+      }
+    },
+    getImageUrl(avatarUrl) {
+      if (!avatarUrl) return '/placeholder-avatar.png'; // Путь к дефолтной аватарке
+      // Проверяем, является ли URL абсолютным
+      if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+        return avatarUrl;
+      }
+      // Если это относительный путь, добавляем базовый URL сервера
+      return `http://localhost:8080${avatarUrl}`;
+    },
+    async confirmUnenroll(studentId, studentName) {
+      if (confirm(`Вы уверены, что хотите удалить студента ${studentName} из курса?`)) {
+        await this.unenrollStudent(studentId);
+      }
+    },
+    async unenrollStudent(studentId) {
+      try {
+        console.log(`Попытка удалить студента ID ${studentId} из курса ID ${this.course.id}`);
+        const response = await fetch(`http://localhost:8080/api/enrollments/students/${studentId}/unenroll?courseId=${this.course.id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Ошибка при удалении студента: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        console.log(`Студент ID ${studentId} успешно удален.`);
+        // Удаляем студента из локального списка
+        this.course.enrolledStudents = this.course.enrolledStudents.filter(student => student.id !== studentId);
+        // Обновляем счетчик студентов
+        this.course.stats.activeStudents = this.course.enrolledStudents.length;
+
+        this.notificationMessage = `Студент успешно удален из курса`;
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+
+      } catch (error) {
+        console.error('Ошибка при удалении студента:', error);
+        this.notificationMessage = error.message || 'Не удалось удалить студента';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
   },
 })
 </script>
@@ -1018,6 +1140,76 @@ export default defineComponent({
   border-color: var(--primary-color);
   background: white;
   box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.course-title-input:disabled,
+.course-description-input:disabled {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  opacity: 0.8;
+  border-color: #e2e8f0;
+}
+
+.course-title-input:disabled:hover,
+.course-description-input:disabled:hover {
+  border-color: #e2e8f0;
+}
+
+.course-title-input:disabled:focus,
+.course-description-input:disabled:focus {
+  box-shadow: none;
+}
+
+.edit-course-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #f8fafc;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.edit-course-btn:hover {
+  background: #edf2f7;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.edit-course-btn i {
+  font-size: 1.1rem;
+}
+
+.course-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.save-btn {
+  background: var(--primary-color);
+  color: white;
+}
+
+.save-btn:hover {
+  background: var(--accent-color);
+  transform: translateY(-2px);
 }
 
 .course-content {
@@ -1115,149 +1307,6 @@ export default defineComponent({
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
-}
-
-.course-title-input:disabled,
-.course-description-input:disabled {
-  background-color: #f8fafc;
-  cursor: not-allowed;
-  opacity: 0.8;
-  border-color: #e2e8f0;
-}
-
-.course-title-input:disabled:hover,
-.course-description-input:disabled:hover {
-  border-color: #e2e8f0;
-}
-
-.course-title-input:disabled:focus,
-.course-description-input:disabled:focus {
-  box-shadow: none;
-}
-
-.edit-course-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #f8fafc;
-  color: #4a5568;
-  border: 2px solid #e2e8f0;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.edit-course-btn:hover {
-  background: #edf2f7;
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-  transform: translateY(-2px);
-}
-
-.edit-course-btn i {
-  font-size: 1.1rem;
-}
-
-.course-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.save-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.save-btn {
-  background: var(--primary-color);
-  color: white;
-}
-
-.save-btn:hover {
-  background: var(--accent-color);
-  transform: translateY(-2px);
-}
-
-.course-content {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 2rem;
-}
-
-.content-panel,
-.stats-panel {
-  background: white;
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-  box-shadow: var(--box-shadow);
-}
-
-.panel-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  flex-direction: column;
-  gap: 0.5rem;
-  position: relative;
-  padding-right: 0;
-}
-
-.panel-header h2 {
-  font-size: 1.25rem;
-  color: var(--text-color);
-  margin: 0;
-  padding-bottom: 0.75rem;
-  position: relative;
-  display: inline-block;
-  text-align: center;
-}
-
-.panel-header h2::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background-color: var(--primary-color);
-}
-
-.stats-panel .panel-header h2::after {
-  background-color: var(--primary-color);
-}
-
-.content-panel .panel-header h2::after {
-  background-color: var(--primary-color);
-}
-
-.add-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.add-btn:hover {
-  background: var(--accent-color);
-  transform: translateY(-2px);
 }
 
 .material-item {
@@ -1430,44 +1479,66 @@ export default defineComponent({
   font-size: 0.9rem;
 }
 
+.student-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  gap: 1rem;
+}
+
 .student-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  width: 150px;
+  gap: 0.75rem;
+  flex-grow: 1;
 }
 
-.student-info img {
-  width: 24px;
-  height: 24px;
+.student-avatar {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
-.progress-bar {
-  flex: 1;
-  height: 6px;
-  background: #e9ecef;
-  border-radius: 3px;
-  position: relative;
-  margin-right: 35px;
+.student-name {
+  font-weight: 500;
+  color: var(--text-color);
+  word-break: break-word;
 }
 
-.progress-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: var(--primary-color);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  position: absolute;
-  right: -35px;
-  top: -4px;
-  font-size: 0.8rem;
+.enrollment-date {
+  font-size: 0.875rem;
   color: #6c757d;
+  flex-shrink: 0;
+}
+
+.unenroll-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: #e53e3e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.unenroll-btn:hover {
+  background-color: #fbe8e8;
+  transform: scale(1.1);
+}
+
+.unenroll-btn i {
+  font-size: 1rem;
 }
 
 .panel-actions {
@@ -2217,5 +2288,58 @@ textarea.form-input {
 
 .compact-file-preview .file-info i.fa-file {
   color: #64748b;
+}
+
+.enrolled-students {
+  margin-top: 2rem;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+}
+
+.enrolled-students h3 {
+  margin-bottom: 1rem;
+  color: var(--text-color);
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.student-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.student-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.student-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.student-name {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.enrollment-date {
+  font-size: 0.875rem;
+  color: #6c757d;
 }
 </style>

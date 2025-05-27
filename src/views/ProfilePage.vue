@@ -3,11 +3,10 @@
     <Header />
     <main class="main-content">
       <div class="container">
-        <div class="back-button">
-          <button @click="$router.back()" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Назад
-          </button>
-        </div>
+        <button @click="$router.back()" class="back-button">
+          <i class="fas fa-arrow-left"></i>
+          Назад
+        </button>
 
         <div class="profile-card">
           <div class="profile-header">
@@ -269,7 +268,7 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
-  margin-top: 80px;
+  margin-top: 120px;
 }
 
 .container {
@@ -279,27 +278,32 @@ export default {
 }
 
 .back-button {
-  margin-bottom: 1rem;
-}
-
-.back-button .btn {
+  position: fixed;
+  top: 1.8rem;
+  left: 1rem;
+  z-index: 999;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: white;
-  color: var(--text-color);
-  border: none;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--box-shadow);
 }
 
-.back-button .btn:hover {
-  background: #f8f9fa;
-  transform: translateX(-5px);
+.back-button:hover {
+  background-color: var(--primary-color-dark);
+  transform: none;
+}
+
+.back-button i {
+  font-size: 1rem;
+  color: white;
 }
 
 .profile-card {
@@ -488,6 +492,17 @@ export default {
 
   .btn {
     width: 100%;
+  }
+
+  .back-button {
+    top: 1.5rem;
+    left: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .back-button i {
+    font-size: 1rem;
   }
 }
 

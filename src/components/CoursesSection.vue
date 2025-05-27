@@ -11,6 +11,9 @@
             <div class="progress" :style="{ width: course.progress + '%' }"></div>
           </div>
           <span class="progress-text">{{ course.progress }}% завершено</span>
+          <button class="continue-btn" @click="$router.push(`/course/${course.id}`)">
+            Продолжить
+          </button>
         </div>
       </div>
     </div>
@@ -92,5 +95,28 @@ export default {
 .progress-text {
   font-size: 0.8rem;
   color: #666;
+}
+
+.continue-btn {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.continue-btn:hover {
+  background: var(--secondary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.continue-btn:active {
+  transform: translateY(0);
 }
 </style> 

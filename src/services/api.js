@@ -34,17 +34,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => {
         console.log('=== Информация об ответе ===');
+        console.log('URL:', response.config.url);
         console.log('Статус:', response.status);
         console.log('Заголовки ответа:', response.headers);
-        console.log('Куки после ответа:', document.cookie);
         console.log('Данные ответа:', response.data);
         return response;
     },
     (error) => {
         console.error('=== Ошибка в ответе ===');
+        console.error('URL:', error.config?.url);
         console.error('Статус:', error.response?.status);
-        console.error('Заголовки ответа:', error.response?.headers);
         console.error('Данные ошибки:', error.response?.data);
+        console.error('Полная ошибка:', error);
         return Promise.reject(error);
     }
 );
@@ -261,7 +262,10 @@ export const materialService = {
 
     async getCourseMaterials(courseId) {
         try {
-            const response = await api.get(`/courses/${courseId}/materials`);
+            const fullUrl = `${API_URL}/materials/course/${courseId}/with-files`;
+            console.log('=== Запрос материалов курса (с файлами) ===');
+            console.log('Полный URL:', fullUrl);
+            const response = await api.get(`/materials/course/${courseId}/with-files`);
             return response.data;
         } catch (error) {
             if (error.response) {

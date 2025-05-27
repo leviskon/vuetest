@@ -88,10 +88,6 @@
               <i class="fas fa-user"></i>
               Мой профиль
             </router-link>
-            <router-link :to="isTeacher ? '/teacher/settings' : '/settings'" class="menu-item">
-              <i class="fas fa-cog"></i>
-              Настройки
-            </router-link>
             <div class="menu-divider"></div>
             <a href="#" class="menu-item logout" @click.prevent="logout">
               <i class="fas fa-sign-out-alt"></i>

@@ -3,7 +3,7 @@ import Home from '@/views/Home.vue'
 import Auth from '../views/Auth.vue'
 import StudentDashboard from '../views/StudentDashboard.vue'
 import AllCourses from '@/views/AllCourses.vue'
-import CourseContent from '@/views/CourseContent.vue'
+import CourseView from '@/views/CourseView.vue'
 import AssignmentPage from '@/views/AssignmentPage.vue'
 import ProfilePage from '@/views/ProfilePage.vue'
 import SettingsPage from '@/views/SettingsPage.vue'
@@ -36,8 +36,8 @@ const routes = [
   },
   {
     path: '/course/:id',
-    name: 'CourseContent',
-    component: CourseContent,
+    name: 'CourseView',
+    component: CourseView,
     meta: { requiresAuth: true }
   },
   {
