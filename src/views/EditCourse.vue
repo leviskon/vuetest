@@ -74,17 +74,22 @@
       <div class="course-content">
         <!-- Левая панель с содержимым курса -->
         <div class="content-panel">
-          <div class="panel-header">
-            <h2>Содержание курса</h2>
+          <div class="panel-header panel-header-centered">
+            <h2 class="course-content-title">Содержание курса</h2>
             <div class="panel-actions">
               <button class="add-btn" @click="showMaterialModal = true">
                 <i class="fas fa-plus"></i>
                 Добавить материал
               </button>
+              <button class="add-btn assignment-btn" @click="showAssignmentModal = true">
+                <i class="fas fa-tasks"></i>
+                Добавить задание
+              </button>
             </div>
           </div>
 
           <div class="content-list">
+            <h3 class="pseudo-title">Материалы</h3>
             <div ref="materialsList" class="materials-list">
               <div v-for="material in course.materials" :key="material.id" class="material-item">
                 <div class="material-header">
@@ -188,7 +193,7 @@
                           <div v-else class="compact-file-preview">
                             <div class="file-info">
                               <i :class="getFileIcon(file)"></i>
-                              <span class="file-name">{{ file.name }}</span>
+                              <span>{{ file.name }}</span>
                             </div>
                             <button @click="downloadMaterial(material.id, index)" class="compact-download-btn">
                               <i class="fas fa-download"></i>
@@ -205,6 +210,117 @@
                   </div>
                   <div v-else class="no-content">
                     <p>Неизвестный тип материала</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h3 class="pseudo-title" style="margin-top: 2.5rem;">Задания</h3>
+            <div class="assignments-list">
+              <div v-if="assignments.length === 0" class="no-assignments">Нет заданий</div>
+              <div v-for="assignment in assignments" :key="assignment.id" class="material-item">
+                <div class="material-header">
+                  <i class="fas fa-grip-vertical handle"></i>
+                  <div class="material-title-block">
+                    <label class="material-label">Название</label>
+                    <input 
+                      v-model="assignment.title" 
+                      class="material-title-input"
+                      :disabled="!editingAssignments.has(assignment.id)"
+                      placeholder="Название задания"
+                    >
+                  </div>
+                  <div class="material-actions">
+                    <button 
+                      v-if="!editingAssignments.has(assignment.id)"
+                      @click="startEditAssignment(assignment)" 
+                      class="action-btn edit-btn" 
+                      title="Редактировать задание"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <template v-else>
+                      <button 
+                        @click="saveAssignment(assignment)" 
+                        class="action-btn save-btn" 
+                        title="Сохранить изменения"
+                      >
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <button 
+                        @click="cancelEditAssignment(assignment)" 
+                        class="action-btn cancel-btn" 
+                        title="Отменить изменения"
+                      >
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </template>
+                    <button 
+                      @click="deleteAssignment(assignment.id)" 
+                      class="action-btn delete-btn" 
+                      title="Удалить задание"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="material-description-block">
+                  <label class="material-label">Описание</label>
+                  <textarea 
+                    v-model="assignment.description" 
+                    class="material-description-input"
+                    :disabled="!editingAssignments.has(assignment.id)"
+                    placeholder="Описание задания"
+                  ></textarea>
+                </div>
+                <div class="material-content">
+                  <div class="document-container">
+                    <div class="document-preview">
+                      <!-- Блок дедлайна отдельно -->
+                      <div class="assignment-deadline-block">
+                        <label class="styled-assignment-fields-label">Дедлайн</label>
+                        <input type="date" v-model="assignment.dueDate" class="form-input" :disabled="!editingAssignments.has(assignment.id)">
+                      </div>
+                      <!-- Блок файлов отдельно -->
+                      <div v-if="assignment.url" class="assignment-files-block">
+                        <div class="assignment-files styled-assignment-files">
+                          <span class="assignment-files-label styled-assignment-files-label">Файлы:</span>
+                          <div v-for="(fileUrl, idx) in (JSON.parse(assignment.url) || [])" :key="idx" class="file-preview-container">
+                            <div v-if="isPdfFile(fileUrl) || getContentTypeFromUrl(fileUrl) === 'application/pdf'" class="pdf-viewer">
+                              <object 
+                                v-if="assignment.fileUrl && assignment.currentFileIndex === idx"
+                                :data="assignment.fileUrl"
+                                type="application/pdf"
+                                class="material-document"
+                              >
+                                <p>Ваш браузер не поддерживает просмотр PDF. <a @click.prevent="downloadMaterial(material.id, index)" href="#">Скачайте PDF</a></p>
+                              </object>
+                              <div v-else class="no-content">
+                                <button @click="displayAssignmentFile(assignment, idx)" class="load-btn">
+                                  <i class="fas fa-eye"></i>
+                                  Просмотреть PDF
+                                </button>
+                              </div>
+                              <div class="document-actions">
+                                <button @click="downloadMaterial(material.id, index)" class="download-btn">
+                                  <i class="fas fa-download"></i>
+                                  Скачать PDF
+                                </button>
+                              </div>
+                            </div>
+                            <div v-else class="compact-file-preview">
+                              <div class="file-info">
+                                <i :class="getFileIcon({ name: fileUrl })"></i>
+                                <span class="file-name">{{ fileUrl.split('/').pop() }}</span>
+                              </div>
+                              <button @click="downloadAssignmentFile(assignment.id, idx)" class="compact-download-btn">
+                                <i class="fas fa-download"></i>
+                                Скачать
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -345,6 +461,130 @@
         </div>
       </div>
     </div>
+
+    <!-- Модальное окно добавления задания -->
+    <div v-if="showAssignmentModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Добавить задание</h2>
+          <button class="close-btn" @click="showAssignmentModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Название задания</label>
+            <input type="text" v-model="newAssignment.title" class="form-input" placeholder="Введите название задания">
+          </div>
+          <div class="form-group">
+            <label>Описание задания</label>
+            <textarea v-model="newAssignment.description" class="form-input" placeholder="Введите описание задания"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Дедлайн</label>
+            <input type="date" v-model="newAssignment.dueDate" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Файлы задания</label>
+            <div class="file-upload-area" @click="$refs.assignmentFileInput.click()" @drop.prevent="handleAssignmentFileDrop" @dragover.prevent>
+              <input 
+                type="file" 
+                ref="assignmentFileInput" 
+                @change="handleAssignmentFileUpload" 
+                class="file-input"
+                style="display: none"
+                multiple
+              >
+              <div class="file-upload-content">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Перетащите файлы сюда или нажмите для выбора</p>
+                <span class="file-types">Поддерживаемые форматы: PDF, DOC, DOCX, PPT, PPTX, ZIP, JPG, PNG</span>
+              </div>
+            </div>
+            <div v-if="newAssignment.files.length > 0" class="selected-files">
+              <div v-for="(file, index) in newAssignment.files" :key="index" class="selected-file">
+                <div class="file-info">
+                  <i class="fas fa-file"></i>
+                  <span>{{ file.name }}</span>
+                </div>
+                <button class="remove-file" @click="removeAssignmentFile(index)">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showAssignmentModal = false">Отмена</button>
+          <button class="save-btn" @click="addAssignment">
+            <i class="fas fa-save"></i>
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно редактирования задания -->
+    <div v-if="showEditAssignmentModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Редактировать задание</h2>
+          <button class="close-btn" @click="cancelEditAssignment">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Название задания</label>
+            <input type="text" v-model="editedAssignment.title" class="form-input" placeholder="Введите название задания">
+          </div>
+          <div class="form-group">
+            <label>Описание задания</label>
+            <textarea v-model="editedAssignment.description" class="form-input" placeholder="Введите описание задания"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Дедлайн</label>
+            <input type="date" v-model="editedAssignment.dueDate" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Файлы задания</label>
+            <div class="file-upload-area" @click="$refs.editAssignmentFileInput.click()" @drop.prevent="handleEditAssignmentFileDrop" @dragover.prevent>
+              <input 
+                type="file" 
+                ref="editAssignmentFileInput" 
+                @change="handleEditAssignmentFileUpload" 
+                class="file-input"
+                style="display: none"
+                multiple
+              >
+              <div class="file-upload-content">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Перетащите файлы сюда или нажмите для выбора</p>
+                <span class="file-types">Поддерживаемые форматы: PDF, DOC, DOCX, PPT, PPTX, ZIP, JPG, PNG</span>
+              </div>
+            </div>
+            <div v-if="editedAssignment.files && editedAssignment.files.length > 0" class="selected-files">
+              <div v-for="(file, index) in editedAssignment.files" :key="index" class="selected-file">
+                <div class="file-info">
+                  <i class="fas fa-file"></i>
+                  <span>{{ file.name }}</span>
+                </div>
+                <button class="remove-file" @click="removeEditAssignmentFile(index)">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="cancelEditAssignment">Отмена</button>
+          <button class="save-btn" @click="saveEditedAssignment">
+            <i class="fas fa-save"></i>
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -445,6 +685,18 @@ export default defineComponent({
         'xls': 'application/vnd.ms-excel'
       },
       editedMaterial: null,
+      showAssignmentModal: false,
+      newAssignment: {
+        title: '',
+        description: '',
+        dueDate: '',
+        files: []
+      },
+      assignments: [],
+      editedAssignment: null,
+      showEditAssignmentModal: false,
+      editingAssignments: new Set(),
+      editedAssignmentCopy: null,
     }
   },
   async created() {
@@ -490,6 +742,8 @@ export default defineComponent({
 
       // Загрузка материалов курса
       await this.loadCourseMaterials()
+      // Загрузка заданий курса
+      await this.loadAssignments()
       // Загрузка данных о записанных студентах
       await this.loadEnrolledStudents()
     } catch (error) {
@@ -501,6 +755,22 @@ export default defineComponent({
       alert('Не удалось загрузить данные курса')
       this.$router.push('/teacher/dashboard')
     }
+  },
+  mounted() {
+    // ... существующий код ...
+    this.$nextTick(() => {
+      // Автоматически загружаем PDF для всех заданий, если есть PDF и не загружен
+      this.assignments.forEach(assignment => {
+        if (assignment.url) {
+          const urls = JSON.parse(assignment.url);
+          urls.forEach((fileUrl, idx) => {
+            if (this.isPdfFile(fileUrl) && (!assignment.fileUrl || assignment.currentFileIndex !== idx)) {
+              this.displayAssignmentFile(assignment, idx);
+            }
+          });
+        }
+      });
+    });
   },
   methods: {
     formatCategory(category) {
@@ -1060,6 +1330,308 @@ export default defineComponent({
         this.showNotification = true;
         setTimeout(() => { this.showNotification = false; }, 3000);
       }
+    },
+    handleAssignmentFileUpload(event) {
+      const files = Array.from(event.target.files);
+      if (files.length > 0) {
+        this.newAssignment.files = [...this.newAssignment.files, ...files];
+      }
+    },
+    handleAssignmentFileDrop(event) {
+      const files = Array.from(event.dataTransfer.files);
+      if (files.length > 0) {
+        this.newAssignment.files = [...this.newAssignment.files, ...files];
+      }
+    },
+    removeAssignmentFile(index) {
+      this.newAssignment.files.splice(index, 1);
+    },
+    async loadAssignments() {
+      try {
+        const response = await fetch(`http://localhost:8080/api/assignments/course/${this.course.id}`, {
+          credentials: 'include'
+        });
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке заданий');
+        }
+        const assignments = await response.json();
+        console.log('Ответ сервера на GET /api/assignments/course:', assignments);
+        // Форматируем dueDate для отображения в input type=date
+        assignments.forEach(a => {
+          if (a.dueDate && typeof a.dueDate === 'string' && a.dueDate.includes('T')) {
+            a.dueDate = a.dueDate.split('T')[0];
+          }
+          // Автоматически загружаем первый PDF файл для отображения (как у материалов)
+          if (a.url) {
+            try {
+              const urls = JSON.parse(a.url);
+              const firstPdfIndex = urls.findIndex(url => this.isPdfFile(url));
+              if (firstPdfIndex !== -1) {
+                this.displayAssignmentFile(a, firstPdfIndex);
+              }
+            } catch (e) {
+              console.warn(`Не удалось распарсить URL для задания ${a.id}:`, e);
+            }
+          }
+        });
+        // Сортируем по id (или дедлайну, если нужно)
+        assignments.sort((a, b) => a.id - b.id);
+        this.assignments = assignments;
+      } catch (error) {
+        console.error('Ошибка при загрузке заданий:', error);
+        this.notificationMessage = error.message || 'Не удалось загрузить задания';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
+    async addAssignment() {
+      if (!this.newAssignment.title || !this.newAssignment.description || !this.newAssignment.dueDate) {
+        alert('Пожалуйста, заполните все поля задания!');
+        return;
+      }
+      // Преобразуем дату в ISO-8601 с временем 00:00:00
+      let isoDueDate = this.newAssignment.dueDate;
+      if (isoDueDate && !isoDueDate.includes('T')) {
+        isoDueDate = isoDueDate + 'T00:00:00';
+      }
+      console.log('POST /api/assignments dueDate:', isoDueDate);
+      const formData = new FormData();
+      formData.append('courseId', this.course.id);
+      formData.append('title', this.newAssignment.title);
+      formData.append('description', this.newAssignment.description);
+      formData.append('dueDate', isoDueDate);
+      this.newAssignment.files.forEach(file => {
+        formData.append('files', file);
+      });
+      try {
+        const response = await fetch('http://localhost:8080/api/assignments', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        if (!response.ok) {
+          throw new Error('Ошибка при добавлении задания');
+        }
+        const createdAssignment = await response.json();
+        console.log('Ответ сервера на POST /api/assignments:', createdAssignment);
+        this.notificationMessage = 'Задание успешно добавлено';
+        this.showNotification = true;
+        this.showAssignmentModal = false;
+        this.newAssignment = { title: '', description: '', dueDate: '', files: [] };
+        await this.loadAssignments();
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      } catch (error) {
+        console.error('Ошибка при добавлении задания:', error);
+        this.notificationMessage = error.message || 'Не удалось добавить задание';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
+    editAssignment(assignment) {
+      this.editedAssignment = {
+        id: assignment.id,
+        title: assignment.title,
+        description: assignment.description,
+        dueDate: assignment.dueDate,
+        files: []
+      };
+      this.showEditAssignmentModal = true;
+    },
+    handleEditAssignmentFileUpload(event) {
+      const files = Array.from(event.target.files);
+      if (files.length > 0) {
+        this.editedAssignment.files = [...this.editedAssignment.files, ...files];
+      }
+    },
+    handleEditAssignmentFileDrop(event) {
+      const files = Array.from(event.dataTransfer.files);
+      if (files.length > 0) {
+        this.editedAssignment.files = [...this.editedAssignment.files, ...files];
+      }
+    },
+    removeEditAssignmentFile(index) {
+      this.editedAssignment.files.splice(index, 1);
+    },
+    cancelEditAssignment() {
+      this.showEditAssignmentModal = false;
+      this.editedAssignment = null;
+    },
+    async saveEditedAssignment() {
+      if (!this.editedAssignment.title || !this.editedAssignment.description || !this.editedAssignment.dueDate) {
+        alert('Пожалуйста, заполните все поля задания!');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('title', this.editedAssignment.title);
+      formData.append('description', this.editedAssignment.description);
+      formData.append('dueDate', this.editedAssignment.dueDate);
+      this.editedAssignment.files.forEach(file => {
+        formData.append('files', file);
+      });
+      try {
+        const response = await fetch(`http://localhost:8080/api/assignments/${this.editedAssignment.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          body: formData
+        });
+        if (!response.ok) {
+          throw new Error('Ошибка при обновлении задания');
+        }
+        this.notificationMessage = 'Задание успешно обновлено';
+        this.showNotification = true;
+        this.showEditAssignmentModal = false;
+        this.editedAssignment = null;
+        await this.loadAssignments();
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      } catch (error) {
+        console.error('Ошибка при обновлении задания:', error);
+        this.notificationMessage = error.message || 'Не удалось обновить задание';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
+    async deleteAssignment(assignmentId) {
+      if (!confirm('Вы уверены, что хотите удалить это задание?')) return;
+      try {
+        const response = await fetch(`http://localhost:8080/api/assignments/${assignmentId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        if (!response.ok) {
+          throw new Error('Ошибка при удалении задания');
+        }
+        this.notificationMessage = 'Задание успешно удалено';
+        this.showNotification = true;
+        await this.loadAssignments();
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      } catch (error) {
+        console.error('Ошибка при удалении задания:', error);
+        this.notificationMessage = error.message || 'Не удалось удалить задание';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
+    startEditAssignment(assignment) {
+      this.editingAssignments.add(assignment.id);
+      // Сохраняем копию для отмены
+      this.editedAssignmentCopy = { ...assignment };
+    },
+    async saveAssignment(assignment) {
+      if (!assignment.title || !assignment.description || !assignment.dueDate) {
+        alert('Пожалуйста, заполните все поля задания!');
+        return;
+      }
+      // Преобразуем дату в ISO-8601 с временем 00:00:00, если нужно
+      let isoDueDate = assignment.dueDate;
+      if (isoDueDate && !isoDueDate.includes('T')) {
+        isoDueDate = isoDueDate + 'T00:00:00';
+      }
+      const formData = new FormData();
+      formData.append('title', assignment.title);
+      formData.append('description', assignment.description);
+      formData.append('dueDate', isoDueDate);
+      // Файлы не редактируются инлайн (можно добавить по желанию)
+      try {
+        const response = await fetch(`http://localhost:8080/api/assignments/${assignment.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          body: formData
+        });
+        if (!response.ok) {
+          throw new Error('Ошибка при обновлении задания');
+        }
+        this.notificationMessage = 'Задание успешно обновлено';
+        this.showNotification = true;
+        this.editingAssignments.delete(assignment.id);
+        this.editedAssignmentCopy = null;
+        await this.loadAssignments();
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      } catch (error) {
+        console.error('Ошибка при обновлении задания:', error);
+        this.notificationMessage = error.message || 'Не удалось обновить задание';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
+    cancelEditAssignment(assignment) {
+      // Возвращаем старые значения
+      Object.assign(assignment, this.editedAssignmentCopy);
+      this.editingAssignments.delete(assignment.id);
+      this.editedAssignmentCopy = null;
+    },
+    isPdfFile(fileName) {
+      if (!fileName) return false;
+      return fileName.toLowerCase().endsWith('.pdf');
+    },
+    async displayAssignmentFile(assignment, fileIndex = 0) {
+      try {
+        console.log('[ASSIGNMENT PDF] Начало загрузки файла для задания:', assignment.id, 'Файл индекс:', fileIndex);
+        if (!assignment.url) {
+          console.warn('[ASSIGNMENT PDF] Нет url у задания:', assignment.id);
+          return;
+        }
+        const urls = JSON.parse(assignment.url);
+        if (!urls[fileIndex]) {
+          console.warn('[ASSIGNMENT PDF] Файл не найден по индексу', fileIndex, 'у задания:', assignment.id);
+          return;
+        }
+        // Очищаем старый URL, если он есть
+        if (assignment.fileUrl) {
+          URL.revokeObjectURL(assignment.fileUrl);
+        }
+        const response = await fetch(`http://localhost:8080/api/assignments/${assignment.id}/file/${fileIndex}`, {
+          credentials: 'include',
+          headers: { 'Accept': 'application/pdf, */*' }
+        });
+        if (!response.ok) {
+          console.error('[ASSIGNMENT PDF] Ошибка при загрузке файла:', response.status, response.statusText);
+          throw new Error('Ошибка при загрузке файла');
+        }
+        const blob = await response.blob();
+        const fileUrl = URL.createObjectURL(blob);
+        assignment.fileUrl = fileUrl;
+        assignment.currentFileIndex = fileIndex;
+        console.log('[ASSIGNMENT PDF] Создан blob-URL для задания:', assignment.id, 'Файл индекс:', fileIndex, 'URL:', fileUrl);
+      } catch (e) {
+        console.error('[ASSIGNMENT PDF] Ошибка при загрузке или создании blob-URL:', e);
+        this.notificationMessage = e.message || 'Не удалось загрузить файл';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
+    async downloadAssignmentFile(assignmentId, fileIndex = 0) {
+      try {
+        const assignment = this.assignments.find(a => a.id === assignmentId);
+        if (!assignment || !assignment.url) return;
+        const urls = JSON.parse(assignment.url);
+        const fileName = urls[fileIndex] ? urls[fileIndex].split('/').pop() : 'file';
+        const response = await fetch(`http://localhost:8080/api/assignments/${assignmentId}/file/${fileIndex}`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Ошибка при загрузке файла');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        this.notificationMessage = 'Файл успешно загружен';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      } catch (e) {
+        this.notificationMessage = e.message || 'Не удалось загрузить файл';
+        this.showNotification = true;
+        setTimeout(() => { this.showNotification = false; }, 3000);
+      }
+    },
+    getAssignmentPdfUrl(assignment, fileIndex) {
+      // Просто возвращаем прямой API url, чтобы PDF сразу отображался
+      const url = `http://localhost:8080/api/assignments/${assignment.id}/file/${fileIndex}`;
+      console.log('[ASSIGNMENT PDF] Попытка отобразить PDF для задания:', assignment.id, 'Файл индекс:', fileIndex, 'URL:', url);
+      return url;
     },
   },
 })
@@ -1976,7 +2548,6 @@ textarea.form-input {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
   background: #fff;
   border-radius: var(--border-radius);
   overflow: hidden;
@@ -2203,33 +2774,35 @@ textarea.form-input {
 
 .compact-file-preview {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
   background: #f8f9fa;
   border-radius: var(--border-radius);
-  width: 100%;
-  height: 48px;
-  margin: 0;
-  padding: 0;
-  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.compact-file-preview:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .file-info {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0 1rem;
   flex: 1;
   min-width: 0;
 }
 
 .file-info i {
-  font-size: 1.2rem;
-  color: #4a5568;
+  font-size: 1.25rem;
   flex-shrink: 0;
 }
 
 .file-name {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #4a5568;
   white-space: nowrap;
   overflow: hidden;
@@ -2239,66 +2812,67 @@ textarea.form-input {
 .compact-download-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
-  padding: 0 2rem;
+  padding: 0.5rem 1rem;
   background: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+  border-radius: var(--border-radius);
   cursor: pointer;
-  transition: var(--transition);
-  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
   font-weight: 500;
-  min-width: 140px;
+  flex-shrink: 0;
 }
 
 .compact-download-btn:hover {
   background: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.2);
 }
 
 .compact-download-btn i {
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 /* Стили для иконок файлов */
-.compact-file-preview .file-info i.fa-file-pdf {
+.file-info i.fa-file-pdf {
   color: #dc2626;
 }
 
-.compact-file-preview .file-info i.fa-file-word {
+.file-info i.fa-file-word {
   color: #2563eb;
 }
 
-.compact-file-preview .file-info i.fa-file-excel {
+.file-info i.fa-file-excel {
   color: #16a34a;
 }
 
-.compact-file-preview .file-info i.fa-file-powerpoint {
+.file-info i.fa-file-powerpoint {
   color: #ea580c;
 }
 
-.compact-file-preview .file-info i.fa-file-image {
+.file-info i.fa-file-image {
   color: #7c3aed;
 }
 
-.compact-file-preview .file-info i.fa-file-video {
+.file-info i.fa-file-video {
   color: #0891b2;
 }
 
-.compact-file-preview .file-info i.fa-file-audio {
+.file-info i.fa-file-audio {
   color: #db2777;
 }
 
-.compact-file-preview .file-info i.fa-file-archive {
+.file-info i.fa-file-archive {
   color: #854d0e;
 }
 
-.compact-file-preview .file-info i.fa-file-code {
+.file-info i.fa-file-code {
   color: #475569;
 }
 
-.compact-file-preview .file-info i.fa-file {
+.file-info i.fa-file {
   color: #64748b;
 }
 
@@ -2353,5 +2927,381 @@ textarea.form-input {
 .enrollment-date {
   font-size: 0.875rem;
   color: #6c757d;
+}
+
+.course-content-title {
+  text-align: center;
+  width: 100%;
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+.panel-header-centered {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.assignment-btn {
+  background: linear-gradient(90deg, #7f53ac, #657ced);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(101, 124, 237, 0.15);
+  transition: all 0.3s;
+}
+
+.assignment-btn:hover {
+  background: linear-gradient(90deg, #657ced, #7f53ac);
+  transform: translateY(-2px) scale(1.04);
+}
+
+.add-btn {
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.15);
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.add-btn:hover {
+  background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
+  transform: translateY(-2px) scale(1.04);
+}
+
+.content-list {
+  margin-top: 2.5rem;
+}
+
+.pseudo-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 1.2rem;
+  margin-top: 1.5rem;
+}
+.assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.assignment-item {
+  background: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.assignment-title-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.assignment-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.assignment-deadline {
+  font-size: 0.95rem;
+  color: #e53e3e;
+  font-weight: 500;
+}
+.assignment-description {
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+.assignment-files {
+  margin-top: 0.5rem;
+}
+.assignment-files-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+.assignment-file-link {
+  color: var(--primary-color);
+  margin-right: 1rem;
+  text-decoration: underline;
+  font-size: 0.98rem;
+}
+.no-assignments {
+  color: #6c757d;
+  font-size: 1rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.assignment-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.styled-assignment-item {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+.styled-assignment-item:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+.styled-assignment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.styled-assignment-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.styled-assignment-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #1f2937;
+}
+.styled-assignment-deadline {
+  font-size: 0.95rem;
+  color: #e53e3e;
+  font-weight: 500;
+}
+.unknown-date {
+  color: #e53e3e;
+  font-style: italic;
+}
+.styled-assignment-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.styled-assignment-description {
+  color: #4b5563;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+.styled-assignment-files {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.styled-assignment-files-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+.styled-file-link-block {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.25rem 0.75rem;
+  margin-right: 0.5rem;
+  font-size: 0.98rem;
+}
+.styled-file-icon {
+  font-size: 1.1rem;
+  color: var(--primary-color);
+}
+.styled-assignment-file-link {
+  color: var(--primary-color);
+  text-decoration: underline;
+  font-size: 0.98rem;
+}
+.styled-assignment-fields-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+.styled-assignment-fields-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.styled-assignment-fields-label {
+  font-size: 0.95rem;
+  color: #4b5563;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.styled-assignment-title-view {
+  font-size: 1.05rem;
+  color: #1f2937;
+  font-weight: 500;
+  padding: 0.25rem 0;
+}
+.assignment-deadline-block {
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.assignment-files-block {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.assignment-files {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.file-preview-container {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  background: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.file-preview-container:last-child {
+  margin-bottom: 0;
+}
+
+.file-preview-container:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: #fff;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.material-document {
+  width: 100%;
+  height: 700px;
+  border: none;
+  background: #fff;
+  display: block;
+}
+
+.document-actions {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-top: 1px solid #e2e8f0;
+}
+
+.assignments-list .material-item {
+  width: 100%;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.assignments-list .material-content {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.assignments-list .document-container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.assignments-list .document-preview {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.assignment-files-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #4a5568;
+}
+
+.compact-file-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: var(--border-radius);
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.file-name {
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+.compact-download-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.compact-download-btn:hover {
+  background: var(--accent-color);
+  transform: translateY(-2px);
 }
 </style>

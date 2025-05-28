@@ -14,7 +14,7 @@
         <CoursesSection :courses="enrolledCourses" />
         
         <div class="secondary-content">
-          <AssignmentsSection :assignments="currentAssignments" />
+          <AssignmentsSection :assignments="allAssignments" />
           <CalendarSection :events="events" />
         </div>
       </div>
@@ -56,32 +56,7 @@ export default {
         email: ''
       },
       enrolledCourses: [],
-      currentAssignments: [
-        {
-          id: 1,
-          title: 'Итоговый проект по HTML/CSS',
-          description: 'Создать адаптивный сайт согласно макету',
-          courseName: 'Веб-разработка',
-          deadline: new Date(2025, 2, 20),
-          status: 'pending'
-        },
-        {
-          id: 2,
-          title: 'Алгоритмические задачи',
-          description: 'Решить 5 задач на сортировку и поиск',
-          courseName: 'Python для начинающих',
-          deadline: new Date(2025, 2, 15),
-          status: 'pending'
-        },
-        {
-          id: 3,
-          title: 'Прототип мобильного приложения',
-          description: 'Разработать интерфейс приложения для заказа еды',
-          courseName: 'UX/UI Дизайн',
-          deadline: new Date(2025, 2, 25),
-          status: 'completed'
-        }
-      ],
+      allAssignments: [],
       events: [
         {
           id: 1,
@@ -126,6 +101,7 @@ export default {
         if (!enrolledCoursesBasic || enrolledCoursesBasic.length === 0) {
           console.log('Нет зачисленных курсов для отображения.');
           this.enrolledCourses = [];
+          this.allAssignments = [];
           return; // Выходим, если нет курсов
         }
 
@@ -219,8 +195,35 @@ export default {
         this.enrolledCourses = coursesWithFullInfoAndProgress;
         console.log('Загруженные курсы с актуальным прогрессом успешно установлены:', this.enrolledCourses);
 
+        // --- Загрузка всех заданий по всем курсам ---
+        const allAssignments = [];
+        for (const course of this.enrolledCourses) {
+          try {
+            console.log(`Запрос заданий для курса ID: ${course.id}`);
+            const resp = await fetch(`http://localhost:8080/api/assignments/course/${course.id}/with-files`, { credentials: 'include' });
+            if (!resp.ok) {
+              console.warn(`Не удалось получить задания для курса ${course.id}`);
+              continue;
+            }
+            const assignments = await resp.json();
+            console.log(`Задания для курса ${course.name}:`, assignments);
+            assignments.forEach(a => {
+              allAssignments.push({
+                ...a,
+                courseName: course.name,
+                status: a.isPublished ? (new Date() > new Date(a.dueDate) ? 'overdue' : 'pending') : 'pending'
+              });
+            });
+          } catch (e) {
+            console.error(`Ошибка при получении заданий для курса ${course.id}:`, e);
+          }
+        }
+        this.allAssignments = allAssignments;
+        console.log('Все собранные задания:', this.allAssignments);
+
       } catch (error) {
         console.error('Общая ошибка при загрузке курсов или прогресса в StudentDashboard:', error)
+        this.allAssignments = [];
       }
     }
   },
@@ -229,7 +232,7 @@ export default {
       return this.enrolledCourses.filter(course => course.progress === 100).length;
     },
     completedAssignments() {
-      return this.currentAssignments.filter(assignment => assignment.status === 'completed').length;
+      return this.allAssignments.filter(assignment => assignment.status === 'completed').length;
     },
     overallProgress() {
       if (this.enrolledCourses.length === 0) return 0;

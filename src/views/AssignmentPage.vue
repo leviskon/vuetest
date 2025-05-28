@@ -2,6 +2,18 @@
   <div class="dashboard">
     <Header />
     
+    <!-- Notification Modal (inline) -->
+    <div v-if="modal.visible" class="modal-overlay">
+      <div class="modal-window" :class="modal.type">
+        <div class="modal-icon">
+          <i v-if="modal.type==='success'" class="fas fa-check-circle"></i>
+          <i v-else class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="modal-message">{{ modal.message }}</div>
+        <button class="modal-close" @click="closeModal">Закрыть</button>
+      </div>
+    </div>
+    
     <main class="main">
       <div class="dashboard-container">
         <div class="back-button-container">
@@ -42,8 +54,12 @@
               <h2>Прикрепленные материалы</h2>
               <div class="attachments-list">
                 <div v-for="(file, index) in assignment.attachments" :key="index" class="attachment-item">
-                  <span class="file-icon">📎</span>
-                  <a :href="file.url" target="_blank" class="file-name">{{ file.name }}</a>
+                  <i :class="['fas', getFileIcon(file.name), 'file-icon']"></i>
+                  <span class="file-name">{{ file.name }}</span>
+                  <button @click="downloadFile(file.downloadUrl, file.name)" class="download-button">
+                    <i class="fas fa-download"></i>
+                    Скачать
+                  </button>
                 </div>
               </div>
             </div>
@@ -51,6 +67,47 @@
             <div class="solution-section">
               <h2>Ваше решение</h2>
               <div class="solution-content">
+                <div v-if="submissions.length > 0" class="submissions-list">
+                  <h3>Отправленные решения</h3>
+                  <div v-for="submission in submissions" :key="submission.id" class="submission-item">
+                    <div class="submission-date-block">
+                      <span class="submission-date">Отправлено: {{ formatSubmissionDate(submission.submittedAt) }}</span>
+                    </div>
+                    <div class="submission-main-row">
+                      <template v-if="editingSubmissionId !== submission.id">
+                        <span class="file-info">
+                          <i :class="['fas', getFileIcon(submission.fileUrl), 'file-icon']"></i>
+                          <span class="file-name">{{ submission.fileUrl }}</span>
+                        </span>
+                        <div class="submission-actions-row">
+                          <button class="btn btn-info btn-sm" @click="downloadSubmission(submission.id)">
+                            <i class="fas fa-download"></i> Скачать
+                          </button>
+                          <button class="btn btn-warning btn-sm" @click="startEditSubmission(submission)">
+                            <i class="fas fa-edit"></i> Изменить
+                          </button>
+                          <button class="btn btn-danger btn-sm" @click="deleteSubmission(submission.id)">
+                            <i class="fas fa-trash"></i> Удалить
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <div class="file-edit-row">
+                          <label class="edit-file-label-styled">
+                            <i class="fas fa-file file-icon"></i>
+                            <input type="file" @change="onEditFileChange($event)" class="edit-file-input-styled" />
+                            <span class="edit-file-placeholder">
+                              {{ editingFile ? editingFile.name : 'Выберите новый файл' }}
+                            </span>
+                          </label>
+                          <button class="btn btn-success btn-sm" @click="saveEditSubmission(submission)">Сохранить</button>
+                          <button class="btn btn-secondary btn-sm" @click="cancelEditSubmission">Отмена</button>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="file-upload">
                   <div 
                     class="upload-area" 
@@ -80,15 +137,6 @@
                       <button class="remove-file" @click="removeFile(index)">×</button>
                     </div>
                   </div>
-                </div>
-
-                <div class="solution-notes">
-                  <h3>Комментарии к решению</h3>
-                  <textarea 
-                    v-model="solutionNotes" 
-                    placeholder="Добавьте комментарии к вашему решению (необязательно)"
-                    rows="4"
-                  ></textarea>
                 </div>
               </div>
             </div>
@@ -121,6 +169,7 @@
 <script>
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { authService } from '@/services/authService'
 
 export default {
   name: 'AssignmentPage',
@@ -131,43 +180,27 @@ export default {
   data() {
     return {
       assignment: {
-        id: 1,
-        title: 'Разработка веб-приложения',
-        courseName: 'Веб-разработка',
-        deadline: '2024-03-25',
-        status: 'pending',
-        description: `
-          <p>В рамках данного задания вам необходимо разработать веб-приложение с использованием следующих технологий:</p>
-          <ul>
-            <li>HTML5 и CSS3</li>
-            <li>JavaScript (ES6+)</li>
-            <li>Vue.js</li>
-            <li>Node.js и Express</li>
-          </ul>
-          <p>Требования к приложению:</p>
-          <ol>
-            <li>Реализовать аутентификацию пользователей</li>
-            <li>Создать CRUD операции для основных сущностей</li>
-            <li>Обеспечить адаптивный дизайн</li>
-            <li>Реализовать валидацию форм</li>
-            <li>Добавить обработку ошибок</li>
-          </ol>
-          <p>Дополнительные требования:</p>
-          <ul>
-            <li>Код должен быть хорошо структурирован</li>
-            <li>Необходимо добавить комментарии к коду</li>
-            <li>Реализовать обработку ошибок</li>
-            <li>Добавить документацию по развертыванию</li>
-          </ul>
-        `,
-        attachments: [
-          { name: 'Требования к проекту.pdf', url: '#' },
-          { name: 'Примеры кода.zip', url: '#' }
-        ]
+        id: null,
+        title: '',
+        courseName: '',
+        deadline: '',
+        status: '',
+        description: '',
+        attachments: []
       },
       selectedFiles: [],
       solutionNotes: '',
-      hasChanges: false
+      hasChanges: false,
+      loading: true,
+      error: null,
+      submissions: [],
+      editingSubmissionId: null,
+      editingFile: null,
+      modal: {
+        visible: false,
+        type: 'success', // или 'error'
+        message: ''
+      }
     }
   },
   computed: {
@@ -181,7 +214,131 @@ export default {
       return this.selectedFiles.length > 0
     }
   },
+  async created() {
+    // Если есть данные в query, используем их сразу
+    const q = this.$route.query;
+    if (q && q.title && q.courseId) {
+      console.log('[AssignmentPage] Используем данные из query:', q);
+      this.assignment.title = q.title;
+      this.assignment.description = q.description;
+      this.assignment.deadline = q.deadline;
+      this.assignment.courseName = q.courseName;
+      this.assignment.status = q.status;
+      this.assignment.id = this.$route.params.id;
+      this.assignment.attachments = [];
+      this.loading = false;
+      await this.fetchAssignmentFilesByCourse();
+      await this.loadSubmissions();
+    } else {
+      await this.fetchAssignmentByCourse();
+      await this.loadSubmissions();
+    }
+  },
   methods: {
+    async getCourseId() {
+      try {
+        const courseId = this.$route.query.courseId;
+        console.log('[AssignmentPage] Получен courseId из query:', courseId);
+        if (!courseId) {
+          throw new Error('courseId не найден в параметрах запроса');
+        }
+        return courseId;
+      } catch (error) {
+        console.error('[AssignmentPage] Ошибка при получении courseId:', error);
+        throw error;
+      }
+    },
+    async fetchAssignmentByCourse() {
+      this.loading = true;
+      this.error = null;
+      try {
+        const assignmentId = this.$route.params.id;
+        const courseId = await this.getCourseId();
+        
+        console.log(`[AssignmentPage] Запрос заданий курса ${courseId}: /api/assignments/course/${courseId}/with-files`);
+        const resp = await fetch(`http://localhost:8080/api/assignments/course/${courseId}/with-files`, { 
+          credentials: 'include' 
+        });
+        console.log('[AssignmentPage] Ответ сервера:', resp);
+        if (!resp.ok) throw new Error('Ошибка загрузки заданий курса');
+        const data = await resp.json();
+        console.log('[AssignmentPage] Полученные задания курса:', data);
+        const found = data.find(a => String(a.id) === String(assignmentId));
+        console.log('[AssignmentPage] Найденное задание:', found);
+        if (!found) throw new Error('Задание не найдено');
+        let attachments = [];
+        if (found.url) {
+          let filesArr = [];
+          try {
+            filesArr = JSON.parse(found.url);
+          } catch (e) {
+            filesArr = [];
+          }
+          attachments = filesArr.map((name, idx) => ({
+            name,
+            url: `http://localhost:8080/api/assignments/${found.id}/file/${idx}`
+          }));
+        }
+        this.assignment = {
+          id: found.id,
+          title: found.title,
+          courseName: found.courseName || '',
+          deadline: found.dueDate,
+          status: found.status || '',
+          description: found.description,
+          attachments
+        };
+        console.log('[AssignmentPage] Итоговое задание для отображения:', this.assignment);
+      } catch (e) {
+        this.error = e.message || 'Ошибка загрузки задания';
+        console.error('[AssignmentPage] Ошибка:', e);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async fetchAssignmentFilesByCourse() {
+      try {
+        const assignmentId = this.$route.params.id;
+        const courseId = this.$route.query.courseId;
+        if (!courseId) return;
+        
+        console.log(`[AssignmentPage] (files) Запрос заданий курса: /api/assignments/course/${courseId}/with-files`);
+        const resp = await fetch(`http://localhost:8080/api/assignments/course/${courseId}/with-files`, { 
+          credentials: 'include' 
+        });
+        
+        if (!resp.ok) return;
+        
+        const data = await resp.json();
+        console.log('[AssignmentPage] (files) Полученные задания курса:', data);
+        
+        const found = data.find(a => String(a.id) === String(assignmentId));
+        console.log('[AssignmentPage] (files) Найденное задание:', found);
+        
+        if (!found) return;
+        
+        let attachments = [];
+        if (found.url) {
+          let filesArr = [];
+          try {
+            filesArr = JSON.parse(found.url);
+          } catch (e) {
+            filesArr = [];
+          }
+          
+          attachments = filesArr.map((name, idx) => ({
+            name,
+            url: `http://localhost:8080/api/assignments/${found.id}/file/${idx}`,
+            downloadUrl: `http://localhost:8080/api/assignments/${found.id}/file/${idx}`
+          }));
+        }
+        
+        this.assignment.attachments = attachments;
+        console.log('[AssignmentPage] (files) Итоговые attachments:', this.assignment.attachments);
+      } catch (e) {
+        console.error('[AssignmentPage] (files) Ошибка:', e);
+      }
+    },
     formatDate(date) {
       return new Date(date).toLocaleDateString('ru-RU', {
         year: 'numeric',
@@ -217,12 +374,58 @@ export default {
       this.selectedFiles.splice(index, 1)
       this.hasChanges = true
     },
-    submitSolution() {
-      // Здесь будет логика отправки решения
-      console.log('Отправка решения:', {
-        files: this.selectedFiles,
-        notes: this.solutionNotes
-      })
+    showModal(type, message) {
+      this.modal.type = type;
+      this.modal.message = message;
+      this.modal.visible = true;
+      setTimeout(() => {
+        this.modal.visible = false;
+      }, 2500);
+    },
+    closeModal() {
+      this.modal.visible = false;
+    },
+    async submitSolution() {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || !currentUser.id) {
+        console.error('Пользователь не авторизован');
+        this.showModal('error', 'Ошибка: Пользователь не авторизован');
+        return;
+      }
+
+      if (!this.selectedFiles.length) {
+        this.showModal('error', 'Пожалуйста, выберите файл для отправки');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('file', this.selectedFiles[0]);
+        formData.append('assignmentId', this.assignment.id);
+        formData.append('studentId', currentUser.id);
+
+        const response = await fetch('http://localhost:8080/api/submissions', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при отправке решения');
+        }
+
+        const submission = await response.json();
+        console.log('Решение успешно отправлено:', submission);
+        
+        this.selectedFiles = [];
+        this.hasChanges = false;
+        this.assignment.status = 'submitted';
+        
+        this.showModal('success', 'Решение успешно отправлено!');
+      } catch (error) {
+        console.error('Ошибка при отправке решения:', error);
+        this.showModal('error', 'Ошибка при отправке решения');
+      }
     },
     saveDraft() {
       // Здесь будет логика сохранения черновика
@@ -231,6 +434,206 @@ export default {
         notes: this.solutionNotes
       })
       this.hasChanges = false
+    },
+    getFileIcon(fileName) {
+      const extension = fileName.split('.').pop().toLowerCase();
+      const iconMap = {
+        // Документы
+        'doc': 'fa-file-word',
+        'docx': 'fa-file-word',
+        'pdf': 'fa-file-pdf',
+        'txt': 'fa-file-alt',
+        'rtf': 'fa-file-alt',
+        
+        // Изображения
+        'jpg': 'fa-file-image',
+        'jpeg': 'fa-file-image',
+        'png': 'fa-file-image',
+        'gif': 'fa-file-image',
+        'svg': 'fa-file-image',
+        
+        // Архивы
+        'zip': 'fa-file-archive',
+        'rar': 'fa-file-archive',
+        '7z': 'fa-file-archive',
+        
+        // Код
+        'js': 'fa-file-code',
+        'html': 'fa-file-code',
+        'css': 'fa-file-code',
+        'py': 'fa-file-code',
+        'java': 'fa-file-code',
+        'cpp': 'fa-file-code',
+        'c': 'fa-file-code',
+        
+        // Таблицы
+        'xls': 'fa-file-excel',
+        'xlsx': 'fa-file-excel',
+        'csv': 'fa-file-excel',
+        
+        // Презентации
+        'ppt': 'fa-file-powerpoint',
+        'pptx': 'fa-file-powerpoint',
+        
+        // По умолчанию
+        'default': 'fa-file'
+      };
+      
+      return iconMap[extension] || iconMap.default;
+    },
+    async downloadFile(url, fileName) {
+      try {
+        const response = await fetch(url, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка при скачивании файла');
+        }
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      } catch (error) {
+        console.error('Ошибка при скачивании файла:', error);
+      }
+    },
+    async loadSubmissions() {
+      try {
+        const response = await fetch(`http://localhost:8080/api/submissions/assignment/${this.assignment.id}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке отправленных решений');
+        }
+        
+        const data = await response.json();
+        console.log('[loadSubmissions] Ответ сервера:', data);
+        this.submissions = data;
+      } catch (error) {
+        console.error('Ошибка при загрузке отправленных решений:', error);
+      }
+    },
+    async downloadSubmission(submissionId) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/submissions/${submissionId}/file`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка при скачивании файла');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'submission';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Ошибка при скачивании файла:', error);
+        alert('Ошибка при скачивании файла');
+      }
+    },
+    startEditSubmission(submission) {
+      this.editingSubmissionId = submission.id;
+      this.editingFile = null;
+    },
+    cancelEditSubmission() {
+      this.editingSubmissionId = null;
+      this.editingFile = null;
+    },
+    onEditFileChange(event) {
+      const files = event.target.files;
+      if (files && files.length > 0) {
+        this.editingFile = files[0];
+      } else {
+        this.editingFile = null;
+      }
+    },
+    async saveEditSubmission(submission) {
+      if (!this.editingFile) {
+        this.showModal('error', 'Пожалуйста, выберите новый файл для обновления');
+        return;
+      }
+      try {
+        const formData = new FormData();
+        formData.append('file', this.editingFile);
+        const currentUser = authService.getCurrentUser();
+        if (currentUser && currentUser.id) {
+          formData.append('studentId', currentUser.id);
+        }
+        const response = await fetch(`http://localhost:8080/api/submissions/${submission.id}`, {
+          method: 'PUT',
+          body: formData,
+          credentials: 'include'
+        });
+        if (!response.ok) {
+          throw new Error('Ошибка при обновлении решения');
+        }
+        const updatedSubmission = await response.json();
+        const index = this.submissions.findIndex(s => s.id === submission.id);
+        if (index !== -1) {
+          this.submissions[index] = updatedSubmission;
+        }
+        this.editingSubmissionId = null;
+        this.editingFile = null;
+        this.showModal('success', 'Решение успешно обновлено');
+      } catch (error) {
+        console.error('Ошибка при обновлении решения:', error);
+        this.showModal('error', 'Ошибка при обновлении решения');
+      }
+    },
+    async deleteSubmission(submissionId) {
+      if (!confirm('Вы уверены, что хотите удалить это решение?')) return;
+      
+      try {
+        const currentUser = authService.getCurrentUser();
+        const formData = new FormData();
+        if (currentUser && currentUser.id) {
+          formData.append('studentId', currentUser.id);
+        }
+        const response = await fetch(`http://localhost:8080/api/submissions/${submissionId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка при удалении решения');
+        }
+        
+        this.submissions = this.submissions.filter(s => s.id !== submissionId);
+        this.showModal('success', 'Решение успешно удалено');
+      } catch (error) {
+        console.error('Ошибка при удалении решения:', error);
+        this.showModal('error', 'Ошибка при удалении решения');
+      }
+    },
+    formatSubmissionDate(dateStr) {
+      // Ожидается формат: '2025-05-28 19:56:28.088943'
+      if (!dateStr) return '';
+      // Преобразуем в ISO-формат
+      const iso = dateStr.replace(' ', 'T').split('.')[0];
+      const date = new Date(iso);
+      if (isNaN(date.getTime())) return dateStr;
+      return date.toLocaleString('ru-RU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
   }
 }
@@ -395,13 +798,48 @@ export default {
 }
 
 .file-icon {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  width: 24px;
+  text-align: center;
 }
 
+.fa-file-word { color: #2b579a; }
+.fa-file-pdf { color: #ff0000; }
+.fa-file-excel { color: #217346; }
+.fa-file-powerpoint { color: #d24726; }
+.fa-file-image { color: #2ecc71; }
+.fa-file-archive { color: #f39c12; }
+.fa-file-code { color: #3498db; }
+.fa-file-alt { color: #7f8c8d; }
+.fa-file { color: #95a5a6; }
+
 .file-name {
-  color: var(--primary-color);
-  text-decoration: none;
+  flex: 1;
+  color: var(--text-color);
   font-weight: 500;
+}
+
+.download-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: var(--transition);
+}
+
+.download-button:hover {
+  background: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
+.download-button i {
+  font-size: 1rem;
 }
 
 .solution-section {
@@ -490,32 +928,6 @@ export default {
   color: white;
 }
 
-.solution-notes {
-  margin-top: 1.5rem;
-}
-
-.solution-notes h3 {
-  margin-bottom: 0.75rem;
-  color: var(--text-color);
-}
-
-.solution-notes textarea {
-  width: 100%;
-  padding: 1rem;
-  border: 1px solid #dee2e6;
-  border-radius: var(--border-radius);
-  resize: vertical;
-  min-height: 100px;
-  font-family: inherit;
-  transition: var(--transition);
-}
-
-.solution-notes textarea:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-}
-
 .solution-actions {
   display: flex;
   gap: 1rem;
@@ -571,6 +983,102 @@ export default {
   box-shadow: none;
 }
 
+.submissions-list {
+  margin-bottom: 2rem;
+}
+
+.submission-item {
+  background: white;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
+}
+
+.submission-date-block {
+  margin-bottom: 0.7rem;
+  background: #f8f9fa;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  width: max-content;
+}
+
+.submission-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #eef3fb;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 1.08rem;
+  font-weight: 500;
+  min-width: 250px;
+  min-height: 40px;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.file-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.edit-file-label-styled {
+  display: flex;
+  align-items: center;
+  background: #eef3fb;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 1.08rem;
+  font-weight: 500;
+  min-width: 250px;
+  min-height: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  cursor: pointer;
+  gap: 0.5rem;
+  position: relative;
+  margin-right: 1rem;
+}
+
+.edit-file-input-styled {
+  display: none;
+}
+
+.edit-file-placeholder {
+  color: #6c757d;
+  font-size: 1.08rem;
+  font-weight: 500;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  padding-left: 0.2rem;
+}
+
+.file-info input[type="file"]:focus + .edit-file-placeholder {
+  outline: 2px solid var(--primary-color);
+}
+
+.submission-actions-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.edit-file-input {
+  margin-left: 1rem;
+  margin-right: 0.5rem;
+}
+
 @media (max-width: 768px) {
   .dashboard-container {
     padding: 1rem;
@@ -592,5 +1100,94 @@ export default {
   .btn {
     width: 100%;
   }
+
+  .submission-main-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+  }
+
+  .submission-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .submission-main-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .submission-actions-row {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.18);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-window {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 2rem 2.5rem 1.5rem 2.5rem;
+  min-width: 320px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.modal-window.success {
+  border-left: 6px solid #28a745;
+}
+
+.modal-window.error {
+  border-left: 6px solid #dc3545;
+}
+
+.modal-icon {
+  font-size: 2.5rem;
+  color: #28a745;
+}
+
+.modal-window.error .modal-icon {
+  color: #dc3545;
+}
+
+.modal-message {
+  font-size: 1.15rem;
+  color: #222;
+  text-align: center;
+}
+
+.modal-close {
+  margin-top: 0.5rem;
+  background: #f8f9fa;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-close:hover {
+  background: #e2e6ea;
 }
 </style> 
