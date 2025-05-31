@@ -81,6 +81,16 @@
             <div class="grade">
               <span class="grade-label">Оценка:</span>
               <span class="grade-value">{{ submission.grade }}/100</span>
+              <div class="grade-actions">
+                <button class="edit-grade-btn" @click="startEditGrade(submission)">
+                  <i class="fas fa-edit"></i>
+                  Изменить
+                </button>
+                <button class="delete-grade-btn" @click="deleteGrade(submission)">
+                  <i class="fas fa-trash"></i>
+                  Удалить
+                </button>
+              </div>
             </div>
             <div class="feedback" v-if="submission.feedback">
               <span class="feedback-label">Комментарий:</span>
@@ -106,7 +116,15 @@ export default {
     return {
       submissions: [],
       isLoading: false,
-      error: null
+      error: null,
+      currentUser: null
+    }
+  },
+  created() {
+    // Получаем текущего пользователя при создании компонента
+    const currentUserStr = localStorage.getItem('user');
+    if (currentUserStr) {
+      this.currentUser = JSON.parse(currentUserStr);
     }
   },
   watch: {
@@ -142,15 +160,22 @@ export default {
           const submissions = await response.json();
           console.log(`[PendingAssignments] Получены ответы для задания ${assignment.id}:`, submissions);
           
-          const processedSubmissions = submissions.map(sub => {
+          // Обрабатываем каждый ответ и загружаем его оценку
+          const processedSubmissions = await Promise.all(submissions.map(async sub => {
             console.log('[PendingAssignments] Обработка ответа:', sub);
+            const grade = await this.loadGrade(sub);
+            
             return {
               ...sub,
+              grade: grade ? grade.grade : null,
+              feedback: grade ? grade.feedback : null,
+              gradeId: grade ? grade.id : null,
+              gradedById: grade ? grade.gradedById : null,
               tempGrade: '',
               tempFeedback: '',
               submissionDate: sub.submissionDate || sub.submittedAt // Поддержка обоих форматов даты
             };
-          });
+          }));
           
           this.submissions.push(...processedSubmissions);
         }
@@ -203,16 +228,30 @@ export default {
     },
     
     async submitGrade(submission) {
+      if (!this.currentUser?.id) {
+        console.error('[PendingAssignments] Ошибка: нет id текущего пользователя');
+        alert('Ошибка: не удалось определить преподавателя');
+        return;
+      }
+
       console.log('[PendingAssignments] Отправка оценки для ответа:', submission);
       try {
+        // Получаем правильный submissionId
+        const submissionId = submission.submission?.id || submission.id;
+        if (!submissionId) {
+          throw new Error('Не удалось определить ID ответа');
+        }
+
         const gradeData = {
+          submissionId: submissionId,
           grade: Number(submission.tempGrade),
-          feedback: submission.tempFeedback
+          feedback: submission.tempFeedback,
+          gradedById: this.currentUser.id
         };
         console.log('[PendingAssignments] Данные для отправки:', gradeData);
         
-        const response = await fetch(`http://localhost:8080/api/submissions/${submission.id}/grade`, {
-          method: 'PUT',
+        const response = await fetch('http://localhost:8080/api/grades', {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -225,21 +264,115 @@ export default {
           throw new Error('Ошибка при сохранении оценки');
         }
 
-        const updatedSubmission = await response.json();
-        console.log('[PendingAssignments] Получен обновленный ответ:', updatedSubmission);
+        const grade = await response.json();
+        console.log('[PendingAssignments] Получена оценка:', grade);
         
+        // Обновляем информацию в списке
         const index = this.submissions.findIndex(s => s.id === submission.id);
         if (index !== -1) {
           this.submissions[index] = {
-            ...updatedSubmission,
-            tempGrade: '',
-            tempFeedback: ''
+            ...submission,
+            grade: grade.grade,
+            feedback: grade.feedback,
+            gradeId: grade.id,
+            gradedById: grade.gradedById
           };
           console.log('[PendingAssignments] Ответ обновлен в списке');
         }
       } catch (error) {
         console.error('[PendingAssignments] Ошибка при сохранении оценки:', error);
         alert('Не удалось сохранить оценку');
+      }
+    },
+
+    async updateGrade(submission) {
+      if (!submission.gradeId) {
+        console.error('[PendingAssignments] Нет ID оценки для обновления');
+        return;
+      }
+
+      try {
+        // Получаем правильный submissionId
+        const submissionId = submission.submission?.id || submission.id;
+        if (!submissionId) {
+          throw new Error('Не удалось определить ID ответа');
+        }
+
+        const gradeData = {
+          submissionId: submissionId,
+          grade: Number(submission.tempGrade),
+          feedback: submission.tempFeedback,
+          gradedById: this.currentUser.id
+        };
+
+        const response = await fetch(`http://localhost:8080/api/grades/${submission.gradeId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify(gradeData)
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при обновлении оценки');
+        }
+
+        const updatedGrade = await response.json();
+        
+        const index = this.submissions.findIndex(s => s.id === submission.id);
+        if (index !== -1) {
+          this.submissions[index] = {
+            ...submission,
+            grade: updatedGrade.grade,
+            feedback: updatedGrade.feedback
+          };
+        }
+
+        alert('Оценка успешно обновлена');
+      } catch (error) {
+        console.error('[PendingAssignments] Ошибка при обновлении оценки:', error);
+        alert('Не удалось обновить оценку');
+      }
+    },
+
+    async deleteGrade(submission) {
+      if (!submission.gradeId) {
+        console.error('[PendingAssignments] Нет ID оценки для удаления');
+        return;
+      }
+
+      if (!confirm('Вы уверены, что хотите удалить оценку?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:8080/api/grades/${submission.gradeId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при удалении оценки');
+        }
+
+        const index = this.submissions.findIndex(s => s.id === submission.id);
+        if (index !== -1) {
+          this.submissions[index] = {
+            ...submission,
+            grade: null,
+            feedback: null,
+            gradeId: null,
+            gradedById: null,
+            tempGrade: '',
+            tempFeedback: ''
+          };
+        }
+
+        alert('Оценка успешно удалена');
+      } catch (error) {
+        console.error('[PendingAssignments] Ошибка при удалении оценки:', error);
+        alert('Не удалось удалить оценку');
       }
     },
     
@@ -340,9 +473,46 @@ export default {
         'default': 'fa-file'
       };
       return iconMap[ext] || iconMap['default'];
-    }
-  }
-}
+    },
+    
+    startEditGrade(submission) {
+      // Заполняем временные поля текущими значениями
+      submission.tempGrade = submission.grade.toString();
+      submission.tempFeedback = submission.feedback || '';
+      this.updateGrade(submission);
+    },
+
+    async loadGrade(submission) {
+      try {
+        const submissionId = submission.submission?.id || submission.id;
+        if (!submissionId) {
+          console.error('[PendingAssignments] Не удалось определить ID ответа');
+          return null;
+        }
+
+        console.log(`[PendingAssignments] Загрузка оценки для ответа ID=${submissionId}`);
+        const response = await fetch(`http://localhost:8080/api/grades/submission/${submissionId}`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log('[PendingAssignments] Оценка не найдена');
+            return null;
+          }
+          throw new Error('Ошибка при загрузке оценки');
+        }
+
+        const grade = await response.json();
+        console.log('[PendingAssignments] Получена оценка:', grade);
+        return grade;
+      } catch (error) {
+        console.error('[PendingAssignments] Ошибка при загрузке оценки:', error);
+        return null;
+      }
+    },
+  } // конец methods
+}; // конец export default
 </script>
 
 <style scoped>
@@ -555,18 +725,52 @@ export default {
 .grade {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.grade-label, .feedback-label {
+.grade-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.edit-grade-btn,
+.delete-grade-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.edit-grade-btn {
+  background: #f8f9fa;
+  color: var(--primary-color);
+}
+
+.edit-grade-btn:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.delete-grade-btn {
+  background: #fff5f5;
+  color: #dc3545;
+}
+
+.delete-grade-btn:hover {
+  background: #dc3545;
+  color: white;
+}
+
+.feedback-label {
   font-weight: 500;
   color: #666;
-}
-
-.grade-value {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--primary-color);
 }
 
 .feedback-text {
@@ -635,4 +839,4 @@ export default {
     align-items: flex-start;
   }
 }
-</style> 
+</style>
