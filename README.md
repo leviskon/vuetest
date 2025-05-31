@@ -1,29 +1,71 @@
-# .
+# Образовательная платформа
 
-This template should help get you started developing with Vue 3 in Vite.
+Проект образовательной платформы, разработанный с использованием Vue.js.
 
-## Recommended IDE Setup
+## Структура проекта
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+```
+├── src/                      # Исходный код
+│   ├── assets/              # Статические ресурсы (изображения, стили)
+│   │   ├── Header.vue      # Компонент заголовка
+│   │   ├── Footer.vue      # Компонент подвала
+│   │   └── AssignmentsSection.vue  # Секция с заданиями
+│   ├── views/              # Компоненты-страницы
+│   │   ├── TeacherDashboard.vue    # Панель управления преподавателя
+│   │   └── AssignmentPage.vue      # Страница задания
+│   ├── services/           # Сервисы для работы с API
+│   │   └── authService.js  # Сервис аутентификации
+│   ├── router/             # Маршрутизация
+│   ├── App.vue            # Корневой компонент
+│   └── main.js            # Точка входа приложения
+├── public/                # Публичные статические файлы
+├── node_modules/         # Зависимости проекта
+├── package.json         # Конфигурация npm и зависимости
+├── vite.config.js      # Конфигурация Vite
+└── index.html          # Главный HTML файл
+```
 
-## Customize configuration
+## Основные компоненты
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+### TeacherDashboard.vue
+- Панель управления для преподавателей
+- Отображение статистики курсов
+- Управление курсами и заданиями
+- Просмотр активных курсов и заданий на проверку
 
-## Project Setup
+### AssignmentPage.vue
+- Страница просмотра и управления заданием
+- Загрузка файлов решений
+- Просмотр прикрепленных материалов
+- Управление статусом задания
 
-```sh
+### AssignmentsSection.vue
+- Компонент для отображения списка заданий
+- Сортировка и фильтрация заданий
+- Отображение сроков и статусов
+- Навигация к детальной странице задания
+
+## Технологический стек
+
+- Vue.js - фреймворк для разработки пользовательского интерфейса
+- Vite - инструмент сборки
+- Vue Router - маршрутизация
+- Fetch API - работа с HTTP-запросами
+- LocalStorage - хранение локальных данных
+
+## Запуск проекта
+
+1. Установите зависимости:
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
-
-```sh
+2. Запустите сервер разработки:
+```bash
 npm run dev
 ```
 
-### Compile and Minify for Production
-
-```sh
+3. Для сборки проекта:
+```bash
 npm run build
 ```

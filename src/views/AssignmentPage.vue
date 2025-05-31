@@ -39,7 +39,7 @@
               </div>
               <div class="meta-item">
                 <span class="meta-label">Статус:</span>
-                <span class="meta-value" :class="assignment.status">{{ getStatusText(assignment.status) }}</span>
+                <span class="meta-value" :class="{ done: submissions.length > 0, pending: submissions.length === 0 }">{{ assignmentStatusText }}</span>
               </div>
             </div>
           </div>
@@ -71,13 +71,13 @@
                   <h3>Отправленные решения</h3>
                   <div v-for="submission in submissions" :key="submission.id" class="submission-item">
                     <div class="submission-date-block">
-                      <span class="submission-date">Отправлено: {{ formatSubmissionDate(submission.submittedAt) }}</span>
+                      <span class="submission-date">Отправлено: {{ formatSubmissionDate(getSubmittedAt(submission)) }}</span>
                     </div>
                     <div class="submission-main-row">
                       <template v-if="editingSubmissionId !== submission.id">
                         <span class="file-info">
-                          <i :class="['fas', getFileIcon(submission.fileUrl), 'file-icon']"></i>
-                          <span class="file-name">{{ submission.fileUrl }}</span>
+                          <i :class="['fas', getFileIcon(getFileName(submission)), 'file-icon']"></i>
+                          <span class="file-name">{{ getFileName(submission) }}</span>
                         </span>
                         <div class="submission-actions-row">
                           <button class="btn btn-info btn-sm" @click="downloadSubmission(submission.id)">
@@ -212,7 +212,10 @@ export default {
     },
     canSubmit() {
       return this.selectedFiles.length > 0
-    }
+    },
+    assignmentStatusText() {
+      return this.submissions && this.submissions.length > 0 ? 'Выполнено' : 'Ожидает выполнения';
+    },
   },
   async created() {
     // Если есть данные в query, используем их сразу
@@ -435,29 +438,30 @@ export default {
       })
       this.hasChanges = false
     },
+    getFileName(submission) {
+      // Универсально достаём имя файла из submission
+      if (!submission) return '';
+      if (submission.fileUrl) return submission.fileUrl;
+      if (submission.submission && submission.submission.fileUrl) return submission.submission.fileUrl;
+      return '';
+    },
     getFileIcon(fileName) {
+      if (!fileName || typeof fileName !== 'string') return 'fa-file';
       const extension = fileName.split('.').pop().toLowerCase();
       const iconMap = {
-        // Документы
+        'pdf': 'fa-file-pdf',
         'doc': 'fa-file-word',
         'docx': 'fa-file-word',
-        'pdf': 'fa-file-pdf',
         'txt': 'fa-file-alt',
         'rtf': 'fa-file-alt',
-        
-        // Изображения
         'jpg': 'fa-file-image',
         'jpeg': 'fa-file-image',
         'png': 'fa-file-image',
         'gif': 'fa-file-image',
         'svg': 'fa-file-image',
-        
-        // Архивы
         'zip': 'fa-file-archive',
         'rar': 'fa-file-archive',
         '7z': 'fa-file-archive',
-        
-        // Код
         'js': 'fa-file-code',
         'html': 'fa-file-code',
         'css': 'fa-file-code',
@@ -465,21 +469,14 @@ export default {
         'java': 'fa-file-code',
         'cpp': 'fa-file-code',
         'c': 'fa-file-code',
-        
-        // Таблицы
         'xls': 'fa-file-excel',
         'xlsx': 'fa-file-excel',
         'csv': 'fa-file-excel',
-        
-        // Презентации
         'ppt': 'fa-file-powerpoint',
         'pptx': 'fa-file-powerpoint',
-        
-        // По умолчанию
         'default': 'fa-file'
       };
-      
-      return iconMap[extension] || iconMap.default;
+      return iconMap[extension] || iconMap['default'];
     },
     async downloadFile(url, fileName) {
       try {
@@ -634,6 +631,12 @@ export default {
         hour: '2-digit',
         minute: '2-digit'
       });
+    },
+    getSubmittedAt(submission) {
+      if (!submission) return '';
+      if (submission.submittedAt) return submission.submittedAt;
+      if (submission.submission && submission.submission.submittedAt) return submission.submission.submittedAt;
+      return '';
     }
   }
 }
@@ -719,8 +722,14 @@ export default {
   color: #dc3545;
 }
 
+.meta-value.done {
+  color: #28a745;
+  font-weight: 600;
+}
+
 .meta-value.pending {
   color: #ffc107;
+  font-weight: 600;
 }
 
 .meta-value.in_progress {

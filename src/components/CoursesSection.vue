@@ -98,22 +98,26 @@ export default {
 }
 
 .continue-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  padding: 0.75rem;
   margin-top: 1rem;
-  background: var(--primary-color);
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 8px;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .continue-btn:hover {
-  background: var(--secondary-color);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color);
 }
 
 .continue-btn:active {

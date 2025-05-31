@@ -57,29 +57,22 @@ export default {
       },
       enrolledCourses: [],
       allAssignments: [],
-      events: [
-        {
-          id: 1,
-          date: new Date(2025, 2, 15),
-          time: '10:00',
-          title: 'Вебинар по Python',
-          description: 'Практическое занятие по работе с API'
-        },
-        {
-          id: 2,
-          date: new Date(2025, 2, 20),
-          time: '14:00',
-          title: 'Сдача проекта',
-          description: 'Дедлайн сдачи итогового проекта по HTML/CSS'
-        },
-        {
-          id: 3,
-          date: new Date(2025, 2, 18),
-          time: '16:30',
-          title: 'Консультация с преподавателем',
-          description: 'Обсуждение прогресса по курсу UX/UI Дизайн'
-        }
-      ]
+      events: [] // Будем заполнять динамически
+    }
+  },
+  methods: {
+    convertAssignmentsToEvents() {
+      // Конвертируем задания в события календаря
+      this.events = this.allAssignments.map(assignment => ({
+        id: assignment.id,
+        date: new Date(assignment.dueDate),
+        time: new Date(assignment.dueDate).toLocaleTimeString('ru-RU', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        title: assignment.title,
+        description: `Дедлайн для задания по курсу ${assignment.courseName}`
+      }));
     }
   },
   async created() {
@@ -102,7 +95,7 @@ export default {
           console.log('Нет зачисленных курсов для отображения.');
           this.enrolledCourses = [];
           this.allAssignments = [];
-          return; // Выходим, если нет курсов
+          return;
         }
 
         console.log(`Обработка ${enrolledCoursesBasic.length} зачисленных курсов...`);
@@ -220,6 +213,10 @@ export default {
         }
         this.allAssignments = allAssignments;
         console.log('Все собранные задания:', this.allAssignments);
+        
+        // Конвертируем задания в события календаря
+        this.convertAssignmentsToEvents();
+        console.log('События календаря:', this.events);
 
       } catch (error) {
         console.error('Общая ошибка при загрузке курсов или прогресса в StudentDashboard:', error)

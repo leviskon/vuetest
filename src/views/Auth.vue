@@ -447,14 +447,15 @@
   .form-checkbox label {
     font-size: 0.9rem;
   }
-  
-  .auth-submit {
+    .auth-submit {
     width: 100%;
     padding: 0.75rem;
     font-size: 1rem;
     letter-spacing: 1px;
     margin-bottom: 1rem;
     transition: transform 0.2s ease;
+    background-color: var(--primary-color);
+    color: white;
   }
   
   .auth-submit:hover {

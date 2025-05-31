@@ -97,7 +97,7 @@
                 <i class="fas fa-sync"></i>
               </button>
             </div>
-            <PendingAssignments :assignments="pendingAssignments" />
+            <PendingAssignments :assignments="assignments" />
           </div>
         </div>
       </div>
@@ -139,6 +139,7 @@ export default {
         averageRating: 0
       },
       courses: [],
+      assignments: [],
       pendingAssignments: [],
       viewMode: 'grid',
       showCreateCourseModal: false,
@@ -202,6 +203,8 @@ export default {
           };
         });
         
+        await this.loadAllAssignments();
+        
         this.stats = {
           activeCourses: this.courses.length,
           totalStudents: this.courses.reduce((sum, course) => sum + course.students, 0),
@@ -209,7 +212,6 @@ export default {
           averageRating: 0
         };
         
-        this.pendingAssignments = [];
         this.isLoading = false;
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
@@ -221,14 +223,50 @@ export default {
         }
       }
     },
+    async loadAllAssignments() {
+      console.log('[TeacherDashboard] Начало загрузки всех заданий');
+      try {
+        const assignmentsPromises = this.courses.map(course => {
+          console.log(`[TeacherDashboard] Загрузка заданий для курса ID=${course.id}`);
+          return fetch(`http://localhost:8080/api/assignments/course/${course.id}/with-files`, {
+            credentials: 'include'
+          }).then(response => {
+            if (!response.ok) {
+              console.error(`[TeacherDashboard] Ошибка HTTP для курса ${course.id}:`, response.status, response.statusText);
+              throw new Error('Ошибка загрузки заданий');
+            }
+            return response.json();
+          });
+        });
+
+        const assignmentsArrays = await Promise.all(assignmentsPromises);
+        console.log('[TeacherDashboard] Получены массивы заданий:', assignmentsArrays);
+        
+        this.assignments = assignmentsArrays.flat().map(assignment => {
+          console.log('[TeacherDashboard] Обработка задания:', assignment);
+          return {
+            ...assignment,
+            id: assignment.id,
+            title: assignment.title || assignment.name,
+            description: assignment.description,
+            dueDate: assignment.dueDate || assignment.deadline
+          };
+        });
+        
+        console.log('[TeacherDashboard] Все задания загружены:', this.assignments);
+      } catch (error) {
+        console.error('[TeacherDashboard] Ошибка при загрузке заданий:', error);
+      }
+    },
     toggleView() {
       this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid'
     },
     refreshCourses() {
       this.loadDashboardData()
     },
-    refreshAssignments() {
-      this.loadDashboardData()
+    async refreshAssignments() {
+      console.log('[TeacherDashboard] Обновление списка заданий');
+      await this.loadAllAssignments();
     },
     handleCourseCreation(courseData) {
       // Здесь будет логика создания курса
