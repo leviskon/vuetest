@@ -80,21 +80,52 @@
           <div class="grade-info" v-else>
             <div class="grade">
               <span class="grade-label">Оценка:</span>
-              <span class="grade-value">{{ submission.grade }}/100</span>
-              <div class="grade-actions">
-                <button class="edit-grade-btn" @click="startEditGrade(submission)">
-                  <i class="fas fa-edit"></i>
-                  Изменить
-                </button>
-                <button class="delete-grade-btn" @click="deleteGrade(submission)">
-                  <i class="fas fa-trash"></i>
-                  Удалить
-                </button>
-              </div>
+              <template v-if="submission.isEditing">
+                <input 
+                  type="number" 
+                  v-model="submission.tempGrade" 
+                  min="0" 
+                  max="100"
+                  placeholder="0-100"
+                  class="grade-edit-input"
+                >
+                <div class="grade-actions">
+                  <button class="save-grade-btn" @click="saveGrade(submission)">
+                    <i class="fas fa-save"></i>
+                    Сохранить
+                  </button>
+                  <button class="cancel-grade-btn" @click="cancelEditGrade(submission)">
+                    <i class="fas fa-times"></i>
+                    Отмена
+                  </button>
+                </div>
+              </template>
+              <template v-else>
+                <span class="grade-value">{{ submission.grade }}/100</span>
+                <div class="grade-actions">
+                  <button class="edit-grade-btn" @click="startEditGrade(submission)">
+                    <i class="fas fa-edit"></i>
+                    Изменить
+                  </button>
+                  <button class="delete-grade-btn" @click="deleteGrade(submission)">
+                    <i class="fas fa-trash"></i>
+                    Удалить
+                  </button>
+                </div>
+              </template>
             </div>
             <div class="feedback" v-if="submission.feedback">
               <span class="feedback-label">Комментарий:</span>
-              <p class="feedback-text">{{ submission.feedback }}</p>
+              <template v-if="submission.isEditing">
+                <textarea 
+                  v-model="submission.tempFeedback" 
+                  placeholder="Введите комментарий к работе..."
+                  class="feedback-edit-input"
+                ></textarea>
+              </template>
+              <template v-else>
+                <p class="feedback-text">{{ submission.feedback }}</p>
+              </template>
             </div>
           </div>
         </div>
@@ -379,7 +410,20 @@ export default {
     async downloadSubmission(submission) {
       console.log('[PendingAssignments] Скачивание файла для ответа:', submission);
       try {
-        const response = await fetch(`http://localhost:8080/api/submissions/${submission.id}/file`, {
+        // Получаем правильный submissionId и имя файла
+        const submissionId = submission.submission?.id || submission.id;
+        if (!submissionId) {
+          throw new Error('Не удалось определить ID ответа');
+        }
+        
+        // Получаем имя файла
+        const fileName = this.getFileName(submission);
+        if (fileName === 'Файл не прикреплен') {
+          throw new Error('Файл не прикреплен к ответу');
+        }
+        
+        console.log(`[PendingAssignments] Скачивание файла "${fileName}" для ответа ID=${submissionId}`);
+        const response = await fetch(`http://localhost:8080/api/submissions/${submissionId}/file`, {
           credentials: 'include'
         });
         
@@ -394,7 +438,7 @@ export default {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = submission.fileName;
+        link.download = this.getFileName(submission);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -415,10 +459,13 @@ export default {
     },
     
     getFileName(submission) {
-      // Если есть fileUrl, берем только имя файла, иначе пусто
-      if (submission.fileUrl) return submission.fileUrl;
-      if (submission.submission && submission.submission.fileUrl) return submission.submission.fileUrl;
-      return 'Файл не прикреплен';
+      // Получаем URL файла
+      const fileUrl = submission.fileUrl || (submission.submission && submission.submission.fileUrl);
+      if (!fileUrl) return 'Файл не прикреплен';
+      
+      // Извлекаем имя файла из URL
+      const fileName = fileUrl.split('/').pop(); // Берем последнюю часть пути
+      return fileName || 'Неизвестный файл';
     },
     
     getSubmittedAt(submission) {
@@ -476,10 +523,64 @@ export default {
     },
     
     startEditGrade(submission) {
-      // Заполняем временные поля текущими значениями
+      // Сохраняем текущие значения во временные поля
       submission.tempGrade = submission.grade.toString();
       submission.tempFeedback = submission.feedback || '';
-      this.updateGrade(submission);
+      submission.isEditing = true;
+    },
+
+    cancelEditGrade(submission) {
+      // Отменяем редактирование и восстанавливаем исходные значения
+      submission.tempGrade = submission.grade.toString();
+      submission.tempFeedback = submission.feedback || '';
+      submission.isEditing = false;
+    },
+
+    async saveGrade(submission) {
+      if (!this.isValidGrade(submission.tempGrade)) {
+        alert('Пожалуйста, введите корректную оценку (от 0 до 100)');
+        return;
+      }
+
+      try {
+        const gradeData = {
+          submissionId: submission.submission?.id || submission.id,
+          grade: Number(submission.tempGrade),
+          feedback: submission.tempFeedback,
+          gradedById: this.currentUser.id
+        };
+
+        const response = await fetch(`http://localhost:8080/api/grades/${submission.gradeId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify(gradeData)
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при обновлении оценки');
+        }
+
+        const updatedGrade = await response.json();
+        
+        // Обновляем данные в списке
+        const index = this.submissions.findIndex(s => s.id === submission.id);
+        if (index !== -1) {
+          this.submissions[index] = {
+            ...submission,
+            grade: updatedGrade.grade,
+            feedback: updatedGrade.feedback,
+            isEditing: false
+          };
+        }
+
+        alert('Оценка успешно обновлена');
+      } catch (error) {
+        console.error('[PendingAssignments] Ошибка при обновлении оценки:', error);
+        alert('Не удалось обновить оценку');
+      }
     },
 
     async loadGrade(submission) {
@@ -838,5 +939,55 @@ export default {
   .submission-meta {
     align-items: flex-start;
   }
+}
+
+.grade-edit-input {
+  width: 80px;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.feedback-edit-input {
+  width: 100%;
+  height: 100px;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  margin-top: 0.5rem;
+}
+
+.save-grade-btn,
+.cancel-grade-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-grade-btn {
+  background: #28a745;
+  color: white;
+}
+
+.save-grade-btn:hover {
+  background: #218838;
+}
+
+.cancel-grade-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.cancel-grade-btn:hover {
+  background: #5a6268;
 }
 </style>

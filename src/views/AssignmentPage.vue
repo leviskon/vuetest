@@ -69,24 +69,50 @@
               <div class="solution-content">
                 <div v-if="submissions.length > 0" class="submissions-list">
                   <h3>Отправленные решения</h3>
-                  <div v-for="submission in submissions" :key="submission.id" class="submission-item">
+                  <div v-for="submission in submissions" :key="submission.submission.id" class="submission-item">
                     <div class="submission-date-block">
                       <span class="submission-date">Отправлено: {{ formatSubmissionDate(getSubmittedAt(submission)) }}</span>
+                      <div v-if="grades[submission.submission.id]" class="grade-info">
+                        <span :class="['grade-badge', getGradeColor(grades[submission.submission.id].grade)]">
+                          Оценка: {{ grades[submission.submission.id].grade }}
+                        </span>
+                        <div class="feedback-tooltip">
+                          <i class="fas fa-comment-alt"></i>
+                          <div class="feedback-content">
+                            <div class="feedback-header">
+                              <span class="feedback-label">Комментарий преподавателя:</span>
+                              <span class="feedback-date">{{ formatDate(grades[submission.submission.id].createdAt) }}</span>
+                            </div>
+                            <p class="feedback-text">{{ grades[submission.submission.id].feedback }}</p>
+                            <div class="feedback-footer">
+                              <span class="graded-by">Оценено: {{ grades[submission.submission.id].gradedBy.name }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div class="submission-main-row">
-                      <template v-if="editingSubmissionId !== submission.id">
+                      <template v-if="editingSubmissionId !== submission.submission.id">
                         <span class="file-info">
                           <i :class="['fas', getFileIcon(getFileName(submission)), 'file-icon']"></i>
                           <span class="file-name">{{ getFileName(submission) }}</span>
                         </span>
                         <div class="submission-actions-row">
-                          <button class="btn btn-info btn-sm" @click="downloadSubmission(submission.id)">
+                          <button class="btn btn-info btn-sm" @click="downloadSubmission(submission.submission.id)">
                             <i class="fas fa-download"></i> Скачать
                           </button>
-                          <button class="btn btn-warning btn-sm" @click="startEditSubmission(submission)">
+                          <button 
+                            v-if="canEditSubmission(submission.submission.id)"
+                            class="btn btn-warning btn-sm" 
+                            @click="startEditSubmission(submission)"
+                          >
                             <i class="fas fa-edit"></i> Изменить
                           </button>
-                          <button class="btn btn-danger btn-sm" @click="deleteSubmission(submission.id)">
+                          <button 
+                            v-if="canEditSubmission(submission.submission.id)"
+                            class="btn btn-danger btn-sm" 
+                            @click="deleteSubmission(submission.submission.id)"
+                          >
                             <i class="fas fa-trash"></i> Удалить
                           </button>
                         </div>
@@ -108,7 +134,7 @@
                   </div>
                 </div>
 
-                <div class="file-upload">
+                <div v-if="!hasGrade" class="file-upload">
                   <div 
                     class="upload-area" 
                     @click="triggerFileInput"
@@ -138,24 +164,24 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div class="solution-actions">
-              <button 
-                class="btn btn-primary" 
-                @click="submitSolution"
-                :disabled="!canSubmit"
-              >
-                Отправить решение
-              </button>
-              <button 
-                class="btn btn-secondary" 
-                @click="saveDraft"
-                :disabled="!hasChanges"
-              >
-                Сохранить черновик
-              </button>
+                <div v-if="!hasGrade" class="solution-actions">
+                  <button 
+                    class="btn btn-primary" 
+                    @click="submitSolution"
+                    :disabled="!canSubmit"
+                  >
+                    Отправить решение
+                  </button>
+                  <button 
+                    class="btn btn-secondary" 
+                    @click="saveDraft"
+                    :disabled="!hasChanges"
+                  >
+                    Сохранить черновик
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -196,6 +222,7 @@ export default {
       submissions: [],
       editingSubmissionId: null,
       editingFile: null,
+      grades: {},
       modal: {
         visible: false,
         type: 'success', // или 'error'
@@ -211,11 +238,26 @@ export default {
       return daysLeft <= 3
     },
     canSubmit() {
-      return this.selectedFiles.length > 0
+      // Проверяем, есть ли оценка у любого из решений
+      const hasGrade = this.submissions.some(submission => 
+        this.grades[submission.submission.id]
+      );
+      return this.selectedFiles.length > 0 && !hasGrade;
+    },
+    hasGrade() {
+      return this.submissions.some(submission => 
+        this.grades[submission.submission.id]
+      );
     },
     assignmentStatusText() {
+      if (this.hasGrade) {
+        return 'Оценено';
+      }
       return this.submissions && this.submissions.length > 0 ? 'Выполнено' : 'Ожидает выполнения';
     },
+    canEditSubmission() {
+      return (submissionId) => !this.grades[submissionId];
+    }
   },
   async created() {
     // Если есть данные в query, используем их сразу
@@ -503,6 +545,7 @@ export default {
     },
     async loadSubmissions() {
       try {
+        console.log('[loadSubmissions] Начало загрузки отправленных решений');
         const response = await fetch(`http://localhost:8080/api/submissions/assignment/${this.assignment.id}`, {
           credentials: 'include'
         });
@@ -514,8 +557,40 @@ export default {
         const data = await response.json();
         console.log('[loadSubmissions] Ответ сервера:', data);
         this.submissions = data;
+
+        // Загружаем оценки для каждого решения
+        for (const submission of this.submissions) {
+          if (submission.submission && submission.submission.id) {
+            console.log(`[loadSubmissions] Загрузка оценки для решения с ID: ${submission.submission.id}`);
+            await this.loadGrade(submission.submission.id);
+          } else {
+            console.warn('[loadSubmissions] Не удалось найти ID решения в объекте:', submission);
+          }
+        }
       } catch (error) {
-        console.error('Ошибка при загрузке отправленных решений:', error);
+        console.error('[loadSubmissions] Ошибка при загрузке отправленных решений:', error);
+      }
+    },
+    async loadGrade(submissionId) {
+      try {
+        console.log(`[loadGrade] Загрузка оценки для решения ${submissionId}`);
+        const response = await fetch(`http://localhost:8080/api/grades/submission/${submissionId}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          console.log(`[loadGrade] Оценка не найдена для решения ${submissionId}`);
+          return;
+        }
+        
+        const grade = await response.json();
+        console.log(`[loadGrade] Получена оценка для решения ${submissionId}:`, grade);
+        this.grades = {
+          ...this.grades,
+          [submissionId]: grade
+        };
+      } catch (error) {
+        console.error(`[loadGrade] Ошибка при загрузке оценки для решения ${submissionId}:`, error);
       }
     },
     async downloadSubmission(submissionId) {
@@ -543,7 +618,7 @@ export default {
       }
     },
     startEditSubmission(submission) {
-      this.editingSubmissionId = submission.id;
+      this.editingSubmissionId = submission.submission.id;
       this.editingFile = null;
     },
     cancelEditSubmission() {
@@ -570,7 +645,7 @@ export default {
         if (currentUser && currentUser.id) {
           formData.append('studentId', currentUser.id);
         }
-        const response = await fetch(`http://localhost:8080/api/submissions/${submission.id}`, {
+        const response = await fetch(`http://localhost:8080/api/submissions/${submission.submission.id}`, {
           method: 'PUT',
           body: formData,
           credentials: 'include'
@@ -579,7 +654,7 @@ export default {
           throw new Error('Ошибка при обновлении решения');
         }
         const updatedSubmission = await response.json();
-        const index = this.submissions.findIndex(s => s.id === submission.id);
+        const index = this.submissions.findIndex(s => s.submission.id === submission.submission.id);
         if (index !== -1) {
           this.submissions[index] = updatedSubmission;
         }
@@ -610,7 +685,7 @@ export default {
           throw new Error('Ошибка при удалении решения');
         }
         
-        this.submissions = this.submissions.filter(s => s.id !== submissionId);
+        this.submissions = this.submissions.filter(s => s.submission.id !== submissionId);
         this.showModal('success', 'Решение успешно удалено');
       } catch (error) {
         console.error('Ошибка при удалении решения:', error);
@@ -637,6 +712,13 @@ export default {
       if (submission.submittedAt) return submission.submittedAt;
       if (submission.submission && submission.submission.submittedAt) return submission.submission.submittedAt;
       return '';
+    },
+    getGradeColor(grade) {
+      if (grade >= 0 && grade < 55) return 'grade-badge-red';
+      if (grade >= 55 && grade < 70) return 'grade-badge-orange';
+      if (grade >= 70 && grade < 85) return 'grade-badge-yellow';
+      if (grade >= 85 && grade <= 100) return 'grade-badge-green';
+      return 'grade-badge-default';
     }
   }
 }
@@ -1010,6 +1092,140 @@ export default {
   padding: 0.3rem 0.8rem;
   border-radius: 6px;
   width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.grade-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.grade-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.grade-badge-red {
+  background: #dc3545;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+}
+
+.grade-badge-orange {
+  background: #fd7e14;
+  box-shadow: 0 2px 8px rgba(253, 126, 20, 0.2);
+}
+
+.grade-badge-yellow {
+  background: #ffc107;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+}
+
+.grade-badge-green {
+  background: #28a745;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+}
+
+.grade-badge-default {
+  background: #6c757d;
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
+}
+
+.grade-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.feedback-tooltip {
+  position: relative;
+  cursor: pointer;
+}
+
+.feedback-tooltip i {
+  color: #6c757d;
+  font-size: 1.2rem;
+  transition: color 0.2s;
+}
+
+.feedback-tooltip:hover i {
+  color: var(--primary-color);
+}
+
+.feedback-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 1rem;
+  min-width: 300px;
+  max-width: 400px;
+  z-index: 1000;
+  margin-top: 0.5rem;
+}
+
+.feedback-tooltip:hover .feedback-content {
+  display: block;
+}
+
+.feedback-content::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid white;
+}
+
+.feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.feedback-label {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.feedback-date {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.feedback-text {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+  color: var(--text-color);
+}
+
+.feedback-footer {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #eee;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.graded-by {
+  font-style: italic;
 }
 
 .submission-main-row {
